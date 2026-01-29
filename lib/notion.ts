@@ -12,6 +12,8 @@ export interface SocialPost {
   name?: string
   status?: 'Draft' | 'Ready' | 'Scheduled' | 'Posted'
   platform?: 'Instagram' | 'TikTok'
+  format?: 'Feed Post' | 'Reel' | 'Story' | 'Carousel'
+  publishDate?: string
 }
 
 // Keep for backward compatibility
@@ -68,6 +70,12 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
       // Handle Platform (select type) - defaults to Instagram
       const platform = properties['Platform']?.select?.name || 'Instagram'
 
+      // Handle Format (select type) - Feed Post, Reel, Story, Carousel
+      const format = properties['Format']?.select?.name || undefined
+
+      // Handle Publish Date (date type)
+      const publishDate = properties['Publish Date']?.date?.start || undefined
+
       return {
         id: page.id,
         imageUrl,
@@ -76,6 +84,8 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
         name,
         status,
         platform,
+        format,
+        publishDate,
       }
     })
 

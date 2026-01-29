@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import CheckoutButton from '@/components/CheckoutButton'
 
 export const metadata = {
   title: 'Social Grid Widget for Notion | MAI Digital',
@@ -178,16 +179,11 @@ export default function LandingPage() {
               ))}
             </ul>
 
-            <a
-              href="https://maidigital.gumroad.com/l/social-grid-widget"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors"
-            >
+            <CheckoutButton className="block w-full py-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors cursor-pointer">
               Get the Widget →
-            </a>
+            </CheckoutButton>
 
-            <p className="text-xs text-gray-400 mt-4">Secure checkout via Gumroad</p>
+            <p className="text-xs text-gray-400 mt-4">Secure checkout via Lemon Squeezy</p>
           </div>
         </div>
       </section>
@@ -219,14 +215,9 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to plan your perfect feed?</h2>
           <p className="text-white/80 mb-8">Join hundreds of creators using Social Grid Widget</p>
-          <a
-            href="https://maidigital.gumroad.com/l/social-grid-widget"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-8 py-4 bg-white text-gray-900 font-medium rounded-full hover:bg-gray-100 transition-colors"
-          >
+          <CheckoutButton className="inline-block px-8 py-4 bg-white text-gray-900 font-medium rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
             Get Started — $12
-          </a>
+          </CheckoutButton>
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { SocialPost } from '@/lib/notion'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DndContext,
@@ -27,6 +27,7 @@ interface SocialGridProps {
 
 type GridSize = '3x3' | '3x4' | '3x5'
 type PlatformFilter = 'all' | 'Instagram' | 'TikTok'
+type FormatFilter = 'all' | 'Feed Post' | 'Reel' | 'Story' | 'Carousel'
 type SortMode = 'slot' | 'date'
 
 const gridConfigs = {
@@ -38,14 +39,97 @@ const gridConfigs = {
 const DEFAULTS = {
   gridSize: '3x3' as GridSize,
   platformFilter: 'all' as PlatformFilter,
+  formatFilter: 'all' as FormatFilter,
   sortMode: 'slot' as SortMode,
 }
 
-// Photo Modal
+// Format icons
+const formatIcons: Record<string, string> = {
+  'Feed Post': '📷',
+  'Reel': '🎬',
+  'Story': '⏱️',
+  'Carousel': '📑',
+}
+
+// Status colors
+const statusColors: Record<string, string> = {
+  'Draft': 'bg-gray-400',
+  'Ready': 'bg-yellow-400',
+  'Scheduled': 'bg-blue-400',
+  'Posted': 'bg-green-400',
+}
+
+// Calculate days until publish
+function getDaysUntil(dateStr: string): { text: string; urgent: boolean } {
+  const publishDate = new Date(dateStr)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  publishDate.setHours(0, 0, 0, 0)
+
+  const diffTime = publishDate.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return { text: 'Overdue', urgent: true }
+  if (diffDays === 0) return { text: 'Today', urgent: true }
+  if (diffDays === 1) return { text: 'Tomorrow', urgent: true }
+  if (diffDays <= 7) return { text: `${diffDays}d`, urgent: false }
+  return { text: `${Math.ceil(diffDays / 7)}w`, urgent: false }
+}
+
+// Extract dominant colors from image (simplified)
+function useColorPalette(imageUrl: string) {
+  const [colors, setColors] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!imageUrl) return
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = imageUrl
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        canvas.width = 50
+        canvas.height = 50
+        ctx.drawImage(img, 0, 0, 50, 50)
+
+        const imageData = ctx.getImageData(0, 0, 50, 50).data
+        const colorCounts: Record<string, number> = {}
+
+        for (let i = 0; i < imageData.length; i += 16) {
+          const r = Math.round(imageData[i] / 32) * 32
+          const g = Math.round(imageData[i + 1] / 32) * 32
+          const b = Math.round(imageData[i + 2] / 32) * 32
+          const color = `rgb(${r},${g},${b})`
+          colorCounts[color] = (colorCounts[color] || 0) + 1
+        }
+
+        const sorted = Object.entries(colorCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([color]) => color)
+
+        setColors(sorted)
+      } catch {
+        // CORS or other error, skip
+      }
+    }
+  }, [imageUrl])
+
+  return colors
+}
+
+// Photo Modal with caption
 function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }) {
+  const colors = useColorPalette(post.imageUrl)
+
   return (
     <div
-      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <button
@@ -57,20 +141,57 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
         </svg>
       </button>
 
-      <div className="max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
         <img
           src={post.imageUrl}
           alt={post.name || 'Post'}
           className="w-full rounded-2xl shadow-2xl"
         />
 
+        {/* Color Palette */}
+        {colors.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <span className="text-xs text-white/40">Colors:</span>
+            {colors.map((color, i) => (
+              <div
+                key={i}
+                className="w-6 h-6 rounded-full border-2 border-white/20"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+        )}
+
         {(post.name || post.caption) && (
-          <div className="mt-6 text-center">
-            {post.name && <h3 className="text-white text-lg font-medium">{post.name}</h3>}
-            {post.caption && <p className="text-white/60 text-sm mt-2 max-w-md mx-auto">{post.caption}</p>}
-            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-white/40">
-              {post.status && <span className="px-3 py-1 rounded-full bg-white/10">{post.status}</span>}
-              {post.platform && <span>{post.platform}</span>}
+          <div className="mt-6">
+            <div className="flex items-center gap-3 mb-3">
+              {post.format && (
+                <span className="text-lg" title={post.format}>{formatIcons[post.format]}</span>
+              )}
+              {post.name && <h3 className="text-white text-lg font-medium">{post.name}</h3>}
+            </div>
+
+            {post.caption && (
+              <p className="text-white/70 text-sm leading-relaxed">{post.caption}</p>
+            )}
+
+            <div className="flex items-center flex-wrap gap-2 mt-4">
+              {post.status && (
+                <span className={`px-3 py-1 rounded-full text-xs text-white ${statusColors[post.status]}`}>
+                  {post.status}
+                </span>
+              )}
+              {post.platform && (
+                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                  {post.platform}
+                </span>
+              )}
+              {post.publishDate && (
+                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                  📅 {new Date(post.publishDate).toLocaleDateString()}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -79,12 +200,14 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
   )
 }
 
-// Sortable Post Item
-function SortablePostItem({ post, onSelect, isDragDisabled }: {
+// Sortable Post Item with overlays
+function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   post: SocialPost
   onSelect: (post: SocialPost) => void
   isDragDisabled: boolean
+  showOverlays: boolean
 }) {
+  const [isHovered, setIsHovered] = useState(false)
   const {
     attributes,
     listeners,
@@ -99,6 +222,8 @@ function SortablePostItem({ post, onSelect, isDragDisabled }: {
     transition,
   }
 
+  const dateInfo = post.publishDate ? getDaysUntil(post.publishDate) : null
+
   return (
     <div
       ref={setNodeRef}
@@ -106,9 +231,11 @@ function SortablePostItem({ post, onSelect, isDragDisabled }: {
       {...attributes}
       {...listeners}
       onClick={() => !isDragging && onSelect(post)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`relative aspect-square overflow-hidden bg-gray-100 transition-all duration-200 ${
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'opacity-50 scale-105 z-50' : 'hover:opacity-90'}`}
+      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''}`}
     >
       <img
         src={post.imageUrl}
@@ -116,6 +243,42 @@ function SortablePostItem({ post, onSelect, isDragDisabled }: {
         className="w-full h-full object-cover"
         draggable={false}
       />
+
+      {showOverlays && (
+        <>
+          {/* Format icon - top left */}
+          {post.format && (
+            <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-xs">
+              {formatIcons[post.format]}
+            </div>
+          )}
+
+          {/* Status dot - top right */}
+          {post.status && (
+            <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${statusColors[post.status]} ring-2 ring-white/50`}
+              title={post.status}
+            />
+          )}
+
+          {/* Date badge - bottom right */}
+          {dateInfo && (
+            <div className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              dateInfo.urgent ? 'bg-red-500 text-white' : 'bg-black/60 text-white'
+            }`}>
+              {dateInfo.text}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Caption preview on hover */}
+      {isHovered && post.caption && (
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
+          <p className="text-white text-[10px] leading-tight line-clamp-3">
+            {post.caption}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -126,7 +289,9 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(DEFAULTS.platformFilter)
+  const [formatFilter, setFormatFilter] = useState<FormatFilter>(DEFAULTS.formatFilter)
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
+  const [showOverlays, setShowOverlays] = useState(true)
   const router = useRouter()
 
   const sensors = useSensors(
@@ -137,7 +302,9 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const handleReset = useCallback(() => {
     setGridSize(DEFAULTS.gridSize)
     setPlatformFilter(DEFAULTS.platformFilter)
+    setFormatFilter(DEFAULTS.formatFilter)
     setSortMode(DEFAULTS.sortMode)
+    setShowOverlays(true)
     setPosts(initialPosts)
     router.refresh()
   }, [initialPosts, router])
@@ -169,11 +336,22 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     }
   }
 
-  const filteredPosts = platformFilter === 'all'
-    ? posts
-    : posts.filter(p => p.platform === platformFilter)
+  // Apply filters
+  let filteredPosts = posts
+  if (platformFilter !== 'all') {
+    filteredPosts = filteredPosts.filter(p => p.platform === platformFilter)
+  }
+  if (formatFilter !== 'all') {
+    filteredPosts = filteredPosts.filter(p => p.format === formatFilter)
+  }
 
   const displayPosts = filteredPosts.slice(0, gridConfigs[gridSize].maxPosts)
+
+  // Calculate color palette for visible posts (top 3 colors across all)
+  const allColors = displayPosts.flatMap(p => {
+    // We can't easily aggregate here without hooks, so skip for grid-level
+    return []
+  })
 
   if (posts.length === 0) {
     return (
@@ -188,7 +366,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Settings Panel - Always visible */}
+      {/* Settings Panel */}
       <div className="mb-4 p-4 bg-gray-50 rounded-2xl space-y-3">
         {/* Sort */}
         <div className="flex items-center justify-between">
@@ -213,7 +391,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           </div>
         </div>
 
-        {/* Platform */}
+        {/* Platform Filter */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-500">Platform</span>
           <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
@@ -226,6 +404,24 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                 }`}
               >
                 {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Format Filter */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">Format</span>
+          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm overflow-x-auto">
+            {(['all', 'Feed Post', 'Reel', 'Story', 'Carousel'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFormatFilter(f)}
+                className={`px-2 py-1 text-xs rounded-md transition-all whitespace-nowrap ${
+                  formatFilter === f ? 'bg-gray-900 text-white' : 'text-gray-500'
+                }`}
+              >
+                {f === 'all' ? 'All' : formatIcons[f]}
               </button>
             ))}
           </div>
@@ -249,12 +445,27 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           </div>
         </div>
 
-        {/* Reset & Saving status */}
-        <div className="flex items-center justify-between pt-1">
+        {/* Overlays Toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">Show badges</span>
+          <button
+            onClick={() => setShowOverlays(!showOverlays)}
+            className={`w-10 h-5 rounded-full transition-colors ${
+              showOverlays ? 'bg-gray-900' : 'bg-gray-300'
+            }`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
+              showOverlays ? 'translate-x-5' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+
+        {/* Reset & Status */}
+        <div className="flex items-center justify-between pt-1 border-t border-gray-200">
           {isSaving ? (
             <span className="text-xs text-blue-500">Saving...</span>
           ) : (
-            <span className="text-xs text-gray-300">{displayPosts.length} posts</span>
+            <span className="text-xs text-gray-400">{displayPosts.length} posts</span>
           )}
           <button
             onClick={handleReset}
@@ -265,7 +476,17 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </div>
       </div>
 
-      {/* Grid - Instagram style */}
+      {/* Legend */}
+      {showOverlays && (
+        <div className="mb-3 flex items-center justify-center gap-4 text-[10px] text-gray-400">
+          <span>📷 Feed</span>
+          <span>🎬 Reel</span>
+          <span>⏱️ Story</span>
+          <span>📑 Carousel</span>
+        </div>
+      )}
+
+      {/* Grid */}
       <div className="border border-gray-200 rounded-3xl overflow-hidden bg-white">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
@@ -276,6 +497,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                   post={post}
                   onSelect={setSelectedPost}
                   isDragDisabled={sortMode === 'date'}
+                  showOverlays={showOverlays}
                 />
               ))}
             </div>
@@ -283,9 +505,9 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </DndContext>
       </div>
 
-      {/* Footer hint */}
+      {/* Footer */}
       <p className="mt-4 text-center text-xs text-gray-300">
-        {sortMode === 'slot' ? 'Drag to reorder' : 'Edit dates in Notion'}
+        {sortMode === 'slot' ? 'Drag to reorder • Hover for caption' : 'Edit dates in Notion'}
       </p>
 
       {/* Photo Modal */}
