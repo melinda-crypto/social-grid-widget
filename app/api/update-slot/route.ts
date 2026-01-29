@@ -3,6 +3,12 @@ import notion from '@/lib/notion'
 
 export async function POST(request: NextRequest) {
   try {
+    // Simple auth check - prevents random API calls
+    const apiKey = request.headers.get('x-api-key')
+    if (apiKey !== process.env.API_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { pageId, slot } = await request.json()
 
     if (!pageId || slot === undefined) {

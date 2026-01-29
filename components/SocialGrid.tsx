@@ -313,7 +313,10 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     try {
       const res = await fetch('/api/update-slot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_SECRET || '',
+        },
         body: JSON.stringify({ pageId, slot }),
       })
       return res.ok
