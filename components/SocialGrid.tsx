@@ -30,27 +30,10 @@ type PlatformFilter = 'all' | 'Instagram' | 'TikTok'
 type SortMode = 'slot' | 'date'
 
 const statusColors = {
-  Draft: 'bg-gray-500',
-  Ready: 'bg-yellow-500',
-  Scheduled: 'bg-blue-500',
-  Posted: 'bg-green-500',
-}
-
-const statusIcons = {
-  Draft: '✏️',
-  Ready: '✅',
-  Scheduled: '📅',
-  Posted: '🚀',
-}
-
-const platformIcons = {
-  Instagram: '📸',
-  TikTok: '🎵',
-}
-
-const platformColors = {
-  Instagram: 'bg-gradient-to-r from-purple-500 to-pink-500',
-  TikTok: 'bg-black',
+  Draft: 'bg-gray-400',
+  Ready: 'bg-amber-400',
+  Scheduled: 'bg-blue-400',
+  Posted: 'bg-emerald-400',
 }
 
 const gridConfigs = {
@@ -59,11 +42,59 @@ const gridConfigs = {
   '4x3': { cols: 4, maxPosts: 12 },
 }
 
+// Default settings
+const DEFAULTS = {
+  gridSize: '3x3' as GridSize,
+  platformFilter: 'all' as PlatformFilter,
+  sortMode: 'slot' as SortMode,
+}
+
+// Photo Modal Component
+function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-4xl max-h-[90vh] w-full">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white/70 hover:text-white text-sm font-medium"
+        >
+          ✕ Close
+        </button>
+
+        {/* Image */}
+        <img
+          src={post.imageUrl}
+          alt={post.name || 'Post'}
+          className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        />
+
+        {/* Caption & details */}
+        <div className="mt-4 text-white text-center" onClick={(e) => e.stopPropagation()}>
+          {post.name && <h3 className="text-lg font-medium">{post.name}</h3>}
+          {post.caption && <p className="text-white/70 text-sm mt-1">{post.caption}</p>}
+          <div className="flex items-center justify-center gap-3 mt-3 text-xs text-white/50">
+            {post.status && (
+              <span className={`px-2 py-1 rounded-full text-white ${statusColors[post.status]}`}>
+                {post.status}
+              </span>
+            )}
+            {post.platform && <span>{post.platform}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Sortable Post Item Component
-function SortablePostItem({ post, hoveredId, setHoveredId, isDragDisabled }: {
+function SortablePostItem({ post, onSelect, isDragDisabled }: {
   post: SocialPost
-  hoveredId: string | null
-  setHoveredId: (id: string | null) => void
+  onSelect: (post: SocialPost) => void
   isDragDisabled: boolean
 }) {
   const {
@@ -82,17 +113,22 @@ function SortablePostItem({ post, hoveredId, setHoveredId, isDragDisabled }: {
     zIndex: isDragging ? 1000 : 1,
   }
 
+  const handleClick = () => {
+    if (!isDragging) {
+      onSelect(post)
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`relative aspect-square overflow-hidden rounded-lg bg-gray-100 transition-transform ${
-        isDragDisabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'shadow-2xl scale-105' : 'hover:scale-[1.02]'}`}
-      onMouseEnter={() => setHoveredId(post.id)}
-      onMouseLeave={() => setHoveredId(null)}
+      onClick={handleClick}
+      className={`relative aspect-square overflow-hidden rounded-xl bg-gray-100 transition-all ${
+        isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+      } ${isDragging ? 'shadow-2xl scale-105 ring-4 ring-blue-400' : 'hover:ring-2 hover:ring-gray-300'}`}
     >
       <img
         src={post.imageUrl}
@@ -101,58 +137,31 @@ function SortablePostItem({ post, hoveredId, setHoveredId, isDragDisabled }: {
         draggable={false}
       />
 
-      {/* Platform badge */}
-      {post.platform && (
-        <div className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-xs font-medium text-white ${platformColors[post.platform]} shadow-md`}>
-          {platformIcons[post.platform]}
-        </div>
-      )}
-
-      {/* Status badge */}
+      {/* Status badge - minimal, top right */}
       {post.status && (
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium text-white ${statusColors[post.status]} shadow-md`}>
-          {statusIcons[post.status]} {post.status}
-        </div>
+        <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${statusColors[post.status]} shadow-md ring-2 ring-white`}
+          title={post.status}
+        />
       )}
 
-      {/* Slot number badge */}
-      {post.slot && (
-        <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/70 text-white text-xs font-bold flex items-center justify-center">
-          {post.slot}
-        </div>
-      )}
-
-      {/* Hover overlay */}
-      {hoveredId === post.id && !isDragging && (
-        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-2 pointer-events-none">
-          {post.slot && (
-            <span className="text-white text-xl font-bold mb-1">#{post.slot}</span>
-          )}
-          {post.platform && (
-            <span className="text-white/80 text-xs mb-2">{post.platform}</span>
-          )}
-          {(post.name || post.caption) && (
-            <p className="text-white text-xs text-center line-clamp-3">
-              {post.name || post.caption}
-            </p>
-          )}
-          {!isDragDisabled && (
-            <span className="text-white/50 text-xs mt-2">Drag to reorder</span>
-          )}
-        </div>
-      )}
+      {/* Hover overlay - minimal */}
+      <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+        <span className="text-white text-xs font-medium bg-black/50 px-3 py-1.5 rounded-full">
+          Click to view
+        </span>
+      </div>
     </div>
   )
 }
 
 export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [posts, setPosts] = useState(initialPosts)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [gridSize, setGridSize] = useState<GridSize>('3x3')
-  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all')
-  const [sortMode, setSortMode] = useState<SortMode>('slot')
+  const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(DEFAULTS.platformFilter)
+  const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
   const router = useRouter()
 
   const sensors = useSensors(
@@ -166,11 +175,15 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     })
   )
 
-  const handleRefresh = useCallback(() => {
+  const handleReset = useCallback(() => {
+    setGridSize(DEFAULTS.gridSize)
+    setPlatformFilter(DEFAULTS.platformFilter)
+    setSortMode(DEFAULTS.sortMode)
+    setPosts(initialPosts)
     setIsRefreshing(true)
     router.refresh()
-    setTimeout(() => setIsRefreshing(false), 1000)
-  }, [router])
+    setTimeout(() => setIsRefreshing(false), 500)
+  }, [initialPosts, router])
 
   const saveSlotToNotion = async (pageId: string, slot: number) => {
     try {
@@ -196,15 +209,11 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
       setPosts(newPosts)
 
-      // Save new order to Notion (only in slot mode)
       if (sortMode === 'slot') {
         setIsSaving(true)
-
-        // Update slots for all reordered posts
         const updates = newPosts.map((post, index) =>
           saveSlotToNotion(post.id, index + 1)
         )
-
         await Promise.all(updates)
         setIsSaving(false)
       }
@@ -221,106 +230,106 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   if (posts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 gap-4">
-        <p>No posts found. Add posts to your Notion database.</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 gap-4">
+        <p className="text-lg">No posts found</p>
+        <p className="text-sm">Add posts to your Notion database</p>
         <button
-          onClick={handleRefresh}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm font-medium transition-colors"
+          onClick={handleReset}
+          className="mt-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm font-medium transition-colors text-gray-600"
         >
-          🔄 Refresh
+          Refresh
         </button>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-4">
-      {/* Controls */}
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-        {/* Left side - Post count & saving status */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">
+    <div className="w-full max-w-3xl mx-auto p-6">
+      {/* Controls - Clean minimal design */}
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+        {/* Left side */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">
             {displayPosts.length} posts
           </span>
           {isSaving && (
-            <span className="text-xs text-blue-500 animate-pulse">💾 Saving...</span>
+            <span className="text-xs text-blue-500">Saving...</span>
           )}
         </div>
 
         {/* Right side - Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Sort mode toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          {/* Sort mode */}
+          <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5">
             <button
               onClick={() => setSortMode('slot')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
                 sortMode === 'slot'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              📍 By Slot
+              Manual
             </button>
             <button
               onClick={() => setSortMode('date')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
                 sortMode === 'date'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              📅 By Date
+              By Date
             </button>
           </div>
 
           {/* Platform filter */}
-          <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5">
             {(['all', 'Instagram', 'TikTok'] as PlatformFilter[]).map((platform) => (
               <button
                 key={platform}
                 onClick={() => setPlatformFilter(platform)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
                   platformFilter === platform
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {platform === 'all' ? '🌐 All' : platform === 'Instagram' ? '📸 IG' : '🎵 TT'}
+                {platform === 'all' ? 'All' : platform === 'Instagram' ? 'IG' : 'TikTok'}
               </button>
             ))}
           </div>
 
-          {/* Grid size selector */}
+          {/* Grid size */}
           <select
             value={gridSize}
             onChange={(e) => setGridSize(e.target.value as GridSize)}
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg bg-white text-gray-600 cursor-pointer"
+            className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 cursor-pointer border-0 focus:ring-2 focus:ring-gray-300"
           >
-            <option value="2x3">2×3 Grid</option>
-            <option value="3x3">3×3 Grid</option>
-            <option value="4x3">4×3 Grid</option>
+            <option value="2x3">2×3</option>
+            <option value="3x3">3×3</option>
+            <option value="4x3">4×3</option>
           </select>
 
-          {/* Refresh button */}
+          {/* Reset button */}
           <button
-            onClick={handleRefresh}
+            onClick={handleReset}
             disabled={isRefreshing}
-            className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-lg text-xs font-medium transition-all"
+            className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all disabled:opacity-50"
           >
-            <span className={`inline-block ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-            Reset
+            {isRefreshing ? '...' : 'Reset'}
           </button>
         </div>
       </div>
 
       {/* Info banner for date mode */}
       {sortMode === 'date' && (
-        <div className="mb-4 p-2 bg-blue-50 text-blue-700 text-xs rounded-lg text-center">
-          📅 Sorted by Publish Date — Change dates in Notion to reorder
+        <div className="mb-4 p-3 bg-gray-50 text-gray-500 text-xs rounded-xl text-center">
+          Sorted by Publish Date — Edit dates in Notion to reorder
         </div>
       )}
 
-      {/* Grid with drag and drop */}
+      {/* Grid */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -328,15 +337,14 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       >
         <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
           <div
-            className="grid gap-2"
+            className="grid gap-3"
             style={{ gridTemplateColumns: `repeat(${gridConfigs[gridSize].cols}, 1fr)` }}
           >
             {displayPosts.map((post) => (
               <SortablePostItem
                 key={post.id}
                 post={post}
-                hoveredId={hoveredId}
-                setHoveredId={setHoveredId}
+                onSelect={setSelectedPost}
                 isDragDisabled={sortMode === 'date'}
               />
             ))}
@@ -344,10 +352,30 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </SortableContext>
       </DndContext>
 
-      {/* Attribution */}
-      <div className="mt-4 text-center text-xs text-gray-400">
-        Powered by Social Grid Planner • {sortMode === 'slot' ? 'Drag to reorder (saves to Notion)' : 'Sorted by date'}
+      {/* Status legend */}
+      <div className="mt-6 flex items-center justify-center gap-4 text-xs text-gray-400">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-gray-400" />
+          <span>Draft</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-amber-400" />
+          <span>Ready</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-blue-400" />
+          <span>Scheduled</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>Posted</span>
+        </div>
       </div>
+
+      {/* Photo Modal */}
+      {selectedPost && (
+        <PhotoModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      )}
     </div>
   )
 }
