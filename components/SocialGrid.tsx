@@ -54,12 +54,19 @@ const formatIcons: Record<string, string> = {
   'Carousel': '📑',
 }
 
-// Status colors
+// Status colors - now used for left border
 const statusColors: Record<string, string> = {
+  'Draft': 'border-l-gray-400',
+  'Ready': 'border-l-amber-400',
+  'Scheduled': 'border-l-blue-400',
+  'Posted': 'border-l-emerald-400',
+}
+
+const statusBgColors: Record<string, string> = {
   'Draft': 'bg-gray-400',
-  'Ready': 'bg-yellow-400',
+  'Ready': 'bg-amber-400',
   'Scheduled': 'bg-blue-400',
-  'Posted': 'bg-green-400',
+  'Posted': 'bg-emerald-400',
 }
 
 // Calculate days until publish
@@ -181,7 +188,7 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
 
             <div className="flex items-center flex-wrap gap-2 mt-4">
               {post.status && (
-                <span className={`px-3 py-1 rounded-full text-xs text-white ${statusColors[post.status]}`}>
+                <span className={`px-3 py-1 rounded-full text-xs text-white ${statusBgColors[post.status]}`}>
                   {post.status}
                 </span>
               )}
@@ -203,7 +210,7 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
   )
 }
 
-// Sortable Post Item with overlays
+// Sortable Post Item with sleek overlays
 function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   post: SocialPost
   onSelect: (post: SocialPost) => void
@@ -238,7 +245,9 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
       onMouseLeave={() => setIsHovered(false)}
       className={`relative aspect-square overflow-hidden bg-gray-100 transition-all duration-200 ${
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''}`}
+      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${
+        showOverlays && post.status ? `border-l-[3px] ${statusColors[post.status]}` : ''
+      }`}
     >
       <img
         src={post.imageUrl}
@@ -249,24 +258,19 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
 
       {showOverlays && (
         <>
-          {/* Format icon - top left */}
+          {/* Format pill - top left with glass effect */}
           {post.format && (
-            <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-xs">
-              {formatIcons[post.format]}
+            <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90 flex items-center gap-0.5">
+              <span>{formatIcons[post.format]}</span>
             </div>
           )}
 
-          {/* Status dot - top right */}
-          {post.status && (
-            <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${statusColors[post.status]} ring-2 ring-white/50`}
-              title={post.status}
-            />
-          )}
-
-          {/* Date badge - bottom right */}
+          {/* Date pill - bottom right with glass effect */}
           {dateInfo && (
-            <div className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-              dateInfo.urgent ? 'bg-red-500 text-white' : 'bg-black/60 text-white'
+            <div className={`absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-medium backdrop-blur-sm ${
+              dateInfo.urgent
+                ? 'bg-red-500/80 text-white'
+                : 'bg-black/40 text-white/90'
             }`}>
               {dateInfo.text}
             </div>
@@ -276,8 +280,8 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
 
       {/* Caption preview on hover */}
       {isHovered && post.caption && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
-          <p className="text-white text-[10px] leading-tight line-clamp-3">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-10">
+          <p className="text-white text-[9px] leading-tight line-clamp-2 font-medium">
             {post.caption}
           </p>
         </div>
@@ -296,6 +300,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
   const [showOverlays, setShowOverlays] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const router = useRouter()
 
   const sensors = useSensors(
@@ -373,156 +378,158 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Settings Panel */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-2xl space-y-3">
-        {/* View Mode */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">View</span>
-          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1 text-xs rounded-md transition-all ${
-                viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500'
-              }`}
-            >
-              Grid
-            </button>
-            <button
-              onClick={() => setViewMode('phone')}
-              className={`px-3 py-1 text-xs rounded-md transition-all ${
-                viewMode === 'phone' ? 'bg-gray-900 text-white' : 'text-gray-500'
-              }`}
-            >
-              📱 Preview
-            </button>
-          </div>
-        </div>
-
-        {/* Sort */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">Sort by</span>
-          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-            <button
-              onClick={() => setSortMode('slot')}
-              className={`px-3 py-1 text-xs rounded-md transition-all ${
-                sortMode === 'slot' ? 'bg-gray-900 text-white' : 'text-gray-500'
-              }`}
-            >
-              Manual
-            </button>
-            <button
-              onClick={() => setSortMode('date')}
-              className={`px-3 py-1 text-xs rounded-md transition-all ${
-                sortMode === 'date' ? 'bg-gray-900 text-white' : 'text-gray-500'
-              }`}
-            >
-              Date
-            </button>
-          </div>
-        </div>
-
-        {/* Platform Filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">Platform</span>
-          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-            {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPlatformFilter(p)}
-                className={`px-3 py-1 text-xs rounded-md transition-all ${
-                  platformFilter === p ? 'bg-gray-900 text-white' : 'text-gray-500'
-                }`}
-              >
-                {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Format Filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">Format</span>
-          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm overflow-x-auto">
-            {(['all', 'Feed Post', 'Reel', 'Story', 'Carousel'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFormatFilter(f)}
-                className={`px-2 py-1 text-xs rounded-md transition-all whitespace-nowrap ${
-                  formatFilter === f ? 'bg-gray-900 text-white' : 'text-gray-500'
-                }`}
-              >
-                {f === 'all' ? 'All' : formatIcons[f]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Grid Size */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">Rows</span>
-          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-            {(['3x3', '3x4', '3x5'] as const).map((size) => (
-              <button
-                key={size}
-                onClick={() => setGridSize(size)}
-                className={`px-3 py-1 text-xs rounded-md transition-all ${
-                  gridSize === size ? 'bg-gray-900 text-white' : 'text-gray-500'
-                }`}
-              >
-                {size.split('x')[1]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Overlays Toggle */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">Show badges</span>
+      {/* Minimal Top Bar */}
+      <div className="mb-3 flex items-center justify-between">
+        {/* View Toggle */}
+        <div className="flex gap-1 bg-gray-100 rounded-full p-0.5">
           <button
-            onClick={() => setShowOverlays(!showOverlays)}
-            className={`w-10 h-5 rounded-full transition-colors ${
-              showOverlays ? 'bg-gray-900' : 'bg-gray-300'
+            onClick={() => setViewMode('grid')}
+            className={`px-3 py-1.5 text-xs rounded-full transition-all ${
+              viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
             }`}
           >
-            <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
-              showOverlays ? 'translate-x-5' : 'translate-x-0.5'
-            }`} />
+            Grid
+          </button>
+          <button
+            onClick={() => setViewMode('phone')}
+            className={`px-3 py-1.5 text-xs rounded-full transition-all ${
+              viewMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            📱
           </button>
         </div>
 
-        {/* Reset & Status */}
-        <div className="flex items-center justify-between pt-1 border-t border-gray-200">
-          {isSaving ? (
-            <span className="text-xs text-blue-500">Saving...</span>
-          ) : (
-            <span className="text-xs text-gray-400">{displayPosts.length} posts</span>
-          )}
+        {/* Post count & Settings toggle */}
+        <div className="flex items-center gap-2">
+          {isSaving && <span className="text-[10px] text-blue-500">Saving...</span>}
+          <span className="text-[10px] text-gray-400">{displayPosts.length} posts</span>
           <button
-            onClick={handleReset}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+              settingsOpen ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
           >
-            Reset
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* Legend - only show in grid view */}
-      {showOverlays && viewMode === 'grid' && (
-        <div className="mb-3 flex items-center justify-center gap-4 text-[10px] text-gray-400">
-          <span>📷 Feed</span>
-          <span>🎬 Reel</span>
-          <span>⏱️ Story</span>
-          <span>📑 Carousel</span>
+      {/* Collapsible Settings Panel */}
+      {settingsOpen && (
+        <div className="mb-4 p-3 bg-gray-50/80 backdrop-blur-sm rounded-2xl space-y-2.5 border border-gray-100">
+          {/* Sort */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Sort</span>
+            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+              <button
+                onClick={() => setSortMode('slot')}
+                className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
+                  sortMode === 'slot' ? 'bg-gray-900 text-white' : 'text-gray-400'
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                onClick={() => setSortMode('date')}
+                className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
+                  sortMode === 'date' ? 'bg-gray-900 text-white' : 'text-gray-400'
+                }`}
+              >
+                Date
+              </button>
+            </div>
+          </div>
+
+          {/* Platform */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Platform</span>
+            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+              {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPlatformFilter(p)}
+                  className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
+                    platformFilter === p ? 'bg-gray-900 text-white' : 'text-gray-400'
+                  }`}
+                >
+                  {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Format */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Format</span>
+            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+              {(['all', 'Feed Post', 'Reel', 'Story', 'Carousel'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFormatFilter(f)}
+                  className={`px-2 py-1 text-[10px] rounded-full transition-all ${
+                    formatFilter === f ? 'bg-gray-900 text-white' : 'text-gray-400'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : formatIcons[f]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rows */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Rows</span>
+            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+              {(['3x3', '3x4', '3x5'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setGridSize(size)}
+                  className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
+                    gridSize === size ? 'bg-gray-900 text-white' : 'text-gray-400'
+                  }`}
+                >
+                  {size.split('x')[1]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Badges & Reset */}
+          <div className="flex items-center justify-between pt-1.5 border-t border-gray-200/50">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400">Badges</span>
+              <button
+                onClick={() => setShowOverlays(!showOverlays)}
+                className={`w-8 h-4 rounded-full transition-colors ${
+                  showOverlays ? 'bg-gray-900' : 'bg-gray-300'
+                }`}
+              >
+                <div className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                  showOverlays ? 'translate-x-4' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+            <button
+              onClick={handleReset}
+              className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       )}
 
       {/* Grid View */}
       {viewMode === 'grid' && (
         <>
-          <div className="border border-gray-200 rounded-3xl overflow-hidden bg-white">
+          <div className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-3 gap-[1px] bg-gray-200">
+                <div className="grid grid-cols-3 gap-[1px] bg-gray-100">
                   {displayPosts.map((post) => (
                     <SortablePostItem
                       key={post.id}
@@ -537,9 +544,9 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
             </DndContext>
           </div>
 
-          {/* Footer */}
-          <p className="mt-4 text-center text-xs text-gray-300">
-            {sortMode === 'slot' ? 'Drag to reorder • Hover for caption' : 'Edit dates in Notion'}
+          {/* Minimal Footer */}
+          <p className="mt-3 text-center text-[10px] text-gray-300">
+            {sortMode === 'slot' ? 'Drag to reorder' : 'Sorted by date'}
           </p>
         </>
       )}
