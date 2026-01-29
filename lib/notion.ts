@@ -29,11 +29,11 @@ export async function getSocialPosts(): Promise<SocialPost[]> {
       throw new Error('NOTION_DATABASE_ID is not set')
     }
 
-    const response = await notion.dataSources.query({
-      data_source_id: dataSourceId,
+    const response = await notion.databases.query({
+      database_id: dataSourceId,
       sorts: [
         {
-          property: 'Slot',
+          property: 'IG Slot',
           direction: 'ascending',
         },
       ],
