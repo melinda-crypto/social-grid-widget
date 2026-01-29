@@ -5,6 +5,9 @@ export const metadata = {
   description: 'Thank you for your purchase! Access your Social Grid Widget.',
 }
 
+const NOTION_TEMPLATE_URL = process.env.NEXT_PUBLIC_NOTION_TEMPLATE_URL || 'https://maidigital.notion.site/Social-Grid-Template'
+const WIDGET_BASE_URL = process.env.NEXT_PUBLIC_WIDGET_URL || 'https://social-grid-widget.vercel.app'
+
 export default function SuccessPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex items-center justify-center px-6 py-12">
@@ -58,7 +61,9 @@ export default function SuccessPage() {
         {/* Quick Links */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <a
-            href="#"
+            href={NOTION_TEMPLATE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="bg-white rounded-xl p-4 border border-gray-100 hover:border-[#7EC8C8] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg bg-[#7EC8C8]/20 flex items-center justify-center mb-2 group-hover:bg-[#7EC8C8]/30 transition-colors">

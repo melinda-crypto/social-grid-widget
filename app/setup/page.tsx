@@ -5,6 +5,9 @@ export const metadata = {
   description: 'Step-by-step guide to set up your Social Grid Widget in Notion.',
 }
 
+const NOTION_TEMPLATE_URL = process.env.NEXT_PUBLIC_NOTION_TEMPLATE_URL || 'https://maidigital.notion.site/Social-Grid-Template'
+const WIDGET_BASE_URL = process.env.NEXT_PUBLIC_WIDGET_URL || 'https://social-grid-widget.vercel.app'
+
 export default function SetupGuidePage() {
   return (
     <main className="min-h-screen bg-[#FAF8F5]">
@@ -64,7 +67,9 @@ export default function SetupGuidePage() {
             <div className="bg-[#FAF8F5] rounded-xl p-6 mb-6">
               <p className="text-gray-700 mb-4">Click the button below to open the template, then click <strong>"Duplicate"</strong> in the top right corner.</p>
               <a
-                href="#"
+                href={NOTION_TEMPLATE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -224,9 +229,9 @@ export default function SetupGuidePage() {
             <div className="bg-white rounded-xl p-6 mb-6">
               <p className="text-gray-700 mb-4">Your personal widget URL:</p>
               <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm break-all mb-4">
-                <span className="text-gray-400">https://</span><span className="text-white">your-widget-url.vercel.app</span><span className="text-gray-400">/widget?token=</span><span className="text-[#F9D5E5]">YOUR_TOKEN</span><span className="text-gray-400">&db=</span><span className="text-[#7EC8C8]">YOUR_DATABASE_ID</span>
+                <span className="text-[#7EC8C8]">{WIDGET_BASE_URL}</span><span className="text-gray-400">/widget?token=</span><span className="text-[#F9D5E5]">YOUR_TOKEN</span><span className="text-gray-400">&db=</span><span className="text-[#F5C242]">YOUR_DATABASE_ID</span>
               </div>
-              <p className="text-sm text-gray-500">Replace with your actual token and database ID from the previous steps.</p>
+              <p className="text-sm text-gray-500">Replace <span className="text-[#F9D5E5]">YOUR_TOKEN</span> with your integration secret and <span className="text-[#F5C242]">YOUR_DATABASE_ID</span> with your database ID.</p>
             </div>
 
             <div className="space-y-3 mb-6">
