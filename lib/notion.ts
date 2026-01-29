@@ -21,7 +21,7 @@ export async function getInstagramPosts(): Promise<SocialPost[]> {
   return getSocialPosts()
 }
 
-export async function getSocialPosts(): Promise<SocialPost[]> {
+export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<SocialPost[]> {
   try {
     const dataSourceId = process.env.NOTION_DATABASE_ID
 
@@ -29,24 +29,29 @@ export async function getSocialPosts(): Promise<SocialPost[]> {
       throw new Error('NOTION_DATABASE_ID is not set')
     }
 
+    const sortConfig = sortBy === 'date'
+      ? [{ property: 'Publish Date', direction: 'ascending' as const }]
+      : [{ property: 'IG Slot', direction: 'ascending' as const }]
+
     const response = await notion.databases.query({
       database_id: dataSourceId,
-      sorts: [
-        {
-          property: 'IG Slot',
-          direction: 'ascending',
-        },
-      ],
-      page_size: 9, // Get 9 posts for 3x3 grid
+      sorts: sortConfig,
+      page_size: 12, // Get 12 posts for 4x3 grid max
     })
 
     const posts: SocialPost[] = response.results.map((page: any) => {
       const properties = page.properties
 
-      // Handle file type for Image field
+      // Handle file type for Image field OR Canva URL field
       const imageFiles = properties['Image']?.files || []
       const firstImage = imageFiles[0]
-      const imageUrl = firstImage?.file?.url || firstImage?.external?.url || ''
+      const fileImageUrl = firstImage?.file?.url || firstImage?.external?.url || ''
+
+      // Check for Canva URL or Image URL field as fallback
+      const canvaUrl = properties['Canva URL']?.url || properties['Image URL']?.url || ''
+
+      // Prefer uploaded file, fall back to URL
+      const imageUrl = fileImageUrl || canvaUrl
 
       // Handle caption (rich_text type)
       const caption = properties['Caption']?.rich_text?.[0]?.plain_text || ''
