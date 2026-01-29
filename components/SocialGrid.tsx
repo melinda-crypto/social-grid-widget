@@ -20,6 +20,9 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import PhoneMockup from './PhoneMockup'
+
+type ViewMode = 'grid' | 'phone'
 
 interface SocialGridProps {
   posts: SocialPost[]
@@ -292,6 +295,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [formatFilter, setFormatFilter] = useState<FormatFilter>(DEFAULTS.formatFilter)
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
   const [showOverlays, setShowOverlays] = useState(true)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const router = useRouter()
 
   const sensors = useSensors(
@@ -371,6 +375,29 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     <div className="w-full max-w-md mx-auto">
       {/* Settings Panel */}
       <div className="mb-4 p-4 bg-gray-50 rounded-2xl space-y-3">
+        {/* View Mode */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">View</span>
+          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('phone')}
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === 'phone' ? 'bg-gray-900 text-white' : 'text-gray-500'
+              }`}
+            >
+              📱 Preview
+            </button>
+          </div>
+        </div>
+
         {/* Sort */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-500">Sort by</span>
@@ -479,8 +506,8 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </div>
       </div>
 
-      {/* Legend */}
-      {showOverlays && (
+      {/* Legend - only show in grid view */}
+      {showOverlays && viewMode === 'grid' && (
         <div className="mb-3 flex items-center justify-center gap-4 text-[10px] text-gray-400">
           <span>📷 Feed</span>
           <span>🎬 Reel</span>
@@ -489,29 +516,54 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </div>
       )}
 
-      {/* Grid */}
-      <div className="border border-gray-200 rounded-3xl overflow-hidden bg-white">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-3 gap-[1px] bg-gray-200">
-              {displayPosts.map((post) => (
-                <SortablePostItem
-                  key={post.id}
-                  post={post}
-                  onSelect={setSelectedPost}
-                  isDragDisabled={sortMode === 'date'}
-                  showOverlays={showOverlays}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      </div>
+      {/* Grid View */}
+      {viewMode === 'grid' && (
+        <>
+          <div className="border border-gray-200 rounded-3xl overflow-hidden bg-white">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-3 gap-[1px] bg-gray-200">
+                  {displayPosts.map((post) => (
+                    <SortablePostItem
+                      key={post.id}
+                      post={post}
+                      onSelect={setSelectedPost}
+                      isDragDisabled={sortMode === 'date'}
+                      showOverlays={showOverlays}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
 
-      {/* Footer */}
-      <p className="mt-4 text-center text-xs text-gray-300">
-        {sortMode === 'slot' ? 'Drag to reorder • Hover for caption' : 'Edit dates in Notion'}
-      </p>
+          {/* Footer */}
+          <p className="mt-4 text-center text-xs text-gray-300">
+            {sortMode === 'slot' ? 'Drag to reorder • Hover for caption' : 'Edit dates in Notion'}
+          </p>
+        </>
+      )}
+
+      {/* Phone Preview View */}
+      {viewMode === 'phone' && (
+        <PhoneMockup postsCount={displayPosts.length}>
+          <div className="grid grid-cols-3 gap-[1px] bg-gray-200">
+            {displayPosts.slice(0, 9).map((post) => (
+              <div
+                key={post.id}
+                className="aspect-square bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setSelectedPost(post)}
+              >
+                <img
+                  src={post.imageUrl}
+                  alt={post.name || 'Post'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </PhoneMockup>
+      )}
 
       {/* Photo Modal */}
       {selectedPost && (
