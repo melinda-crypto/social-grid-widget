@@ -36,7 +36,7 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
     const response = await notion.databases.query({
       database_id: dataSourceId,
       sorts: sortConfig,
-      page_size: 12, // Get 12 posts for 4x3 grid max
+      page_size: 15, // Get 15 posts for 3x5 grid max
     })
 
     const posts: SocialPost[] = response.results.map((page: any) => {

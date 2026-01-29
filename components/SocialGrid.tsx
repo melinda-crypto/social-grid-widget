@@ -39,7 +39,6 @@ const DEFAULTS = {
   gridSize: '3x3' as GridSize,
   platformFilter: 'all' as PlatformFilter,
   sortMode: 'slot' as SortMode,
-  showSettings: false,
 }
 
 // Photo Modal
@@ -128,7 +127,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(DEFAULTS.platformFilter)
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
-  const [showSettings, setShowSettings] = useState(false)
   const router = useRouter()
 
   const sensors = useSensors(
@@ -141,7 +139,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     setPlatformFilter(DEFAULTS.platformFilter)
     setSortMode(DEFAULTS.sortMode)
     setPosts(initialPosts)
-    setShowSettings(false)
     router.refresh()
   }, [initialPosts, router])
 
@@ -191,95 +188,82 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <div className="flex items-center gap-2">
-          {isSaving && (
-            <span className="text-xs text-gray-400">Saving...</span>
-          )}
+      {/* Settings Panel - Always visible */}
+      <div className="mb-4 p-4 bg-gray-50 rounded-2xl space-y-3">
+        {/* Sort */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">Sort by</span>
+          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+            <button
+              onClick={() => setSortMode('slot')}
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                sortMode === 'slot' ? 'bg-gray-900 text-white' : 'text-gray-500'
+              }`}
+            >
+              Manual
+            </button>
+            <button
+              onClick={() => setSortMode('date')}
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                sortMode === 'date' ? 'bg-gray-900 text-white' : 'text-gray-500'
+              }`}
+            >
+              Date
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-        >
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-2xl space-y-3">
-          {/* Sort */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Sort by</span>
-            <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+        {/* Platform */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">Platform</span>
+          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+            {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
               <button
-                onClick={() => setSortMode('slot')}
+                key={p}
+                onClick={() => setPlatformFilter(p)}
                 className={`px-3 py-1 text-xs rounded-md transition-all ${
-                  sortMode === 'slot' ? 'bg-gray-900 text-white' : 'text-gray-500'
+                  platformFilter === p ? 'bg-gray-900 text-white' : 'text-gray-500'
                 }`}
               >
-                Manual
+                {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
               </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid Size */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">Rows</span>
+          <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+            {(['3x3', '3x4', '3x5'] as const).map((size) => (
               <button
-                onClick={() => setSortMode('date')}
+                key={size}
+                onClick={() => setGridSize(size)}
                 className={`px-3 py-1 text-xs rounded-md transition-all ${
-                  sortMode === 'date' ? 'bg-gray-900 text-white' : 'text-gray-500'
+                  gridSize === size ? 'bg-gray-900 text-white' : 'text-gray-500'
                 }`}
               >
-                Date
+                {size.split('x')[1]}
               </button>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {/* Platform */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Platform</span>
-            <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-              {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatformFilter(p)}
-                  className={`px-3 py-1 text-xs rounded-md transition-all ${
-                    platformFilter === p ? 'bg-gray-900 text-white' : 'text-gray-500'
-                  }`}
-                >
-                  {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Grid Size */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Rows</span>
-            <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-              {(['3x3', '3x4', '3x5'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setGridSize(size)}
-                  className={`px-3 py-1 text-xs rounded-md transition-all ${
-                    gridSize === size ? 'bg-gray-900 text-white' : 'text-gray-500'
-                  }`}
-                >
-                  {size.split('x')[1]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Reset */}
+        {/* Reset & Saving status */}
+        <div className="flex items-center justify-between pt-1">
+          {isSaving ? (
+            <span className="text-xs text-blue-500">Saving...</span>
+          ) : (
+            <span className="text-xs text-gray-300">{displayPosts.length} posts</span>
+          )}
           <button
             onClick={handleReset}
-            className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >
-            Reset to defaults
+            Reset
           </button>
         </div>
-      )}
+      </div>
 
       {/* Grid - Instagram style */}
       <div className="border border-gray-200 rounded-3xl overflow-hidden bg-white">
