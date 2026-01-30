@@ -10,16 +10,21 @@ export interface SocialPost {
   caption?: string
   slot?: number
   name?: string
-  status?: 'Draft' | 'Ready' | 'Scheduled' | 'Posted'
+  status?: 'Idea' | 'Draft' | 'Ready' | 'Scheduled' | 'Live'
   platform?: 'Instagram' | 'TikTok'
   format?: 'Feed Post' | 'Reel' | 'Story' | 'Carousel'
   publishDate?: string
   // Video support
   videoUrl?: string
   thumbnailUrl?: string
-  mediaType: 'image' | 'video' | 'carousel'
+  mediaType: 'image' | 'video' | 'carousel' | 'embed'
   // Carousel support (multiple images)
   images?: string[]
+  // Embed support (Canva, YouTube, Vimeo)
+  embedUrl?: string
+  embedType?: 'canva' | 'youtube' | 'vimeo' | 'loom' | 'other'
+  // Hashtags
+  hashtags?: string
 }
 
 // Keep for backward compatibility
@@ -77,9 +82,31 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
       const thumbnailUrl = thumbnailFiles[0]?.file?.url ||
                           thumbnailFiles[0]?.external?.url || ''
 
+      // Handle Embed URL field (for Canva, YouTube, Vimeo, Loom links)
+      const embedUrl = properties['Video Link']?.url ||
+                       properties['Embed URL']?.url ||
+                       properties['Canva Link']?.url || ''
+
+      // Detect embed type from URL
+      const detectEmbedType = (url: string): 'canva' | 'youtube' | 'vimeo' | 'loom' | 'other' | undefined => {
+        if (!url) return undefined
+        if (url.includes('canva.com')) return 'canva'
+        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
+        if (url.includes('vimeo.com')) return 'vimeo'
+        if (url.includes('loom.com')) return 'loom'
+        return 'other'
+      }
+
+      const embedType = detectEmbedType(embedUrl)
+
+      // Handle Hashtags field (rich_text type)
+      const hashtags = properties['Hashtags']?.rich_text?.[0]?.plain_text || ''
+
       // Determine media type
-      let mediaType: 'image' | 'video' | 'carousel' = 'image'
-      if (videoUrl) {
+      let mediaType: 'image' | 'video' | 'carousel' | 'embed' = 'image'
+      if (embedUrl && embedType) {
+        mediaType = 'embed'
+      } else if (videoUrl) {
         mediaType = 'video'
       } else if (allImages.length > 1) {
         mediaType = 'carousel'
@@ -120,11 +147,14 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
         thumbnailUrl: thumbnailUrl || undefined,
         mediaType,
         images: allImages.length > 1 ? allImages : undefined,
+        embedUrl: embedUrl || undefined,
+        embedType,
+        hashtags: hashtags || undefined,
       }
     })
 
-    // Filter out posts without any media (image or video)
-    return posts.filter(post => post.imageUrl || post.videoUrl)
+    // Filter out posts without any media (image, video, or embed)
+    return posts.filter(post => post.imageUrl || post.videoUrl || post.embedUrl)
   } catch (error) {
     console.error('Error fetching from Notion:', error)
     return []

@@ -34,6 +34,7 @@ interface SocialGridProps {
 
 type GridSize = '3x3' | '3x4' | '3x5'
 type SortMode = 'slot' | 'date'
+type StatusFilter = 'all' | 'Idea' | 'Draft' | 'Ready' | 'Scheduled' | 'Live'
 
 const gridConfigs = {
   '3x3': { cols: 3, maxPosts: 9 },
@@ -52,6 +53,55 @@ const formatIcons: Record<string, string> = {
   'Reel': '🎬',
   'Story': '⏱️',
   'Carousel': '📑',
+}
+
+// Convert embed URLs to embeddable format
+function getEmbedUrl(url: string, type?: string): string {
+  if (!url) return ''
+
+  // Canva - convert edit/view links to watch/embed
+  if (type === 'canva' || url.includes('canva.com')) {
+    // Extract design ID and convert to embed URL
+    const match = url.match(/design\/([^\/]+)/)
+    if (match) {
+      const designId = match[1]
+      return `https://www.canva.com/design/${designId}/watch?embed`
+    }
+    return url.replace('/edit', '/watch').replace('/view', '/watch')
+  }
+
+  // YouTube - convert to embed URL
+  if (type === 'youtube' || url.includes('youtube.com') || url.includes('youtu.be')) {
+    let videoId = ''
+    if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0]
+    } else if (url.includes('v=')) {
+      videoId = url.split('v=')[1]?.split('&')[0]
+    } else if (url.includes('/embed/')) {
+      return url // Already embed format
+    }
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`
+    }
+  }
+
+  // Vimeo - convert to embed URL
+  if (type === 'vimeo' || url.includes('vimeo.com')) {
+    const match = url.match(/vimeo\.com\/(\d+)/)
+    if (match) {
+      return `https://player.vimeo.com/video/${match[1]}`
+    }
+  }
+
+  // Loom - convert to embed URL
+  if (type === 'loom' || url.includes('loom.com')) {
+    const match = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/)
+    if (match) {
+      return `https://www.loom.com/embed/${match[1]}`
+    }
+  }
+
+  return url
 }
 
 // Status pill styles - clean 5-stage workflow (synced with Notion)
@@ -136,11 +186,17 @@ function useColorPalette(imageUrl: string) {
   return colors
 }
 
-// Media Modal with video/carousel support
-function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }) {
+// Media Modal with video/carousel/embed support + inline editing
+function PhotoModal({ post, onClose, onUpdate }: { post: SocialPost; onClose: () => void; onUpdate?: (updatedPost: Partial<SocialPost>) => void }) {
   const colors = useColorPalette(post.imageUrl)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editCaption, setEditCaption] = useState(post.caption || '')
+  const [editHashtags, setEditHashtags] = useState(post.hashtags || '')
+  const [editStatus, setEditStatus] = useState<string>(post.status || 'Draft')
+  const [isSaving, setIsSaving] = useState(false)
   const isVideo = post.mediaType === 'video'
+  const isEmbed = post.mediaType === 'embed'
   const isCarousel = post.mediaType === 'carousel' && post.images && post.images.length > 1
 
   const handlePrev = () => {
@@ -154,6 +210,68 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
       setCarouselIndex((prev) => (prev === post.images!.length - 1 ? 0 : prev + 1))
     }
   }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      const res = await fetch('/api/update-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_SECRET || '',
+        },
+        body: JSON.stringify({
+          pageId: post.id,
+          caption: editCaption,
+          status: editStatus,
+          hashtags: editHashtags,
+        }),
+      })
+
+      if (res.ok && onUpdate) {
+        onUpdate({
+          caption: editCaption,
+          status: editStatus as SocialPost['status'],
+          hashtags: editHashtags,
+        })
+      }
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to save:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    setEditStatus(newStatus)
+    // Auto-save status change
+    setIsSaving(true)
+    try {
+      const res = await fetch('/api/update-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_SECRET || '',
+        },
+        body: JSON.stringify({
+          pageId: post.id,
+          status: newStatus,
+        }),
+      })
+
+      if (res.ok && onUpdate) {
+        onUpdate({ status: newStatus as SocialPost['status'] })
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Get embed URL for iframes
+  const embedSrc = post.embedUrl ? getEmbedUrl(post.embedUrl, post.embedType) : ''
 
   return (
     <div
@@ -170,8 +288,19 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
       </button>
 
       <div className="max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-        {/* Video Player */}
-        {isVideo && post.videoUrl ? (
+        {/* Embed Player (Canva, YouTube, Vimeo, Loom) */}
+        {isEmbed && embedSrc ? (
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black aspect-[9/16]">
+            <iframe
+              src={embedSrc}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              frameBorder="0"
+            />
+          </div>
+        ) : isVideo && post.videoUrl ? (
+          /* Video Player */
           <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black">
             <video
               src={post.videoUrl}
@@ -244,57 +373,134 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
           </div>
         )}
 
-        {(post.name || post.caption) && (
-          <div className="mt-6">
-            <div className="flex items-center gap-3 mb-3">
+        <div className="mt-6">
+          {/* Header with edit toggle */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
               {post.format && (
                 <span className="text-lg" title={post.format}>{formatIcons[post.format]}</span>
               )}
               {isVideo && (
                 <span className="text-lg" title="Video">🎬</span>
               )}
+              {isEmbed && (
+                <span className="text-lg" title={`${post.embedType || 'Embed'}`}>
+                  {post.embedType === 'canva' ? '🎨' : post.embedType === 'youtube' ? '▶️' : post.embedType === 'vimeo' ? '🎥' : post.embedType === 'loom' ? '🔴' : '🔗'}
+                </span>
+              )}
               {post.name && <h3 className="text-white text-lg font-medium">{post.name}</h3>}
             </div>
-
-            {post.caption && (
-              <p className="text-white/70 text-sm leading-relaxed">{post.caption}</p>
-            )}
-
-            <div className="flex items-center flex-wrap gap-2 mt-4">
-              {post.status && (
-                <span className={`px-3 py-1 rounded-full text-xs text-white ${statusBgColors[post.status]}`}>
-                  {post.status}
-                </span>
-              )}
-              {post.platform && (
-                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
-                  {post.platform}
-                </span>
-              )}
-              {post.publishDate && (
-                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
-                  📅 {new Date(post.publishDate).toLocaleDateString()}
-                </span>
-              )}
-              {isCarousel && post.images && (
-                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
-                  📑 {carouselIndex + 1}/{post.images.length}
-                </span>
-              )}
-            </div>
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-3 py-1 rounded-full text-xs transition-colors ${
+                isEditing ? 'bg-white/20 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'
+              }`}
+            >
+              {isEditing ? '✕ Cancel' : '✏️ Edit'}
+            </button>
           </div>
-        )}
+
+          {/* Status Pills - Always visible, clickable */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {['Idea', 'Draft', 'Ready', 'Scheduled', 'Live'].map((status) => (
+              <button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={isSaving}
+                className={`px-3 py-1 rounded-full text-xs transition-all ${
+                  editStatus === status
+                    ? `${statusBgColors[status]} text-white ring-2 ring-white/30`
+                    : 'bg-white/10 text-white/50 hover:bg-white/20'
+                } ${isSaving ? 'opacity-50' : ''}`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
+          {/* Caption - View or Edit */}
+          {isEditing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-white/40 block mb-1">Caption</label>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  className="w-full bg-white/10 text-white text-sm rounded-lg p-3 border border-white/20 focus:border-white/40 focus:outline-none resize-none"
+                  rows={3}
+                  placeholder="Write your caption..."
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40 block mb-1">Hashtags</label>
+                <textarea
+                  value={editHashtags}
+                  onChange={(e) => setEditHashtags(e.target.value)}
+                  className="w-full bg-white/10 text-blue-400 text-xs rounded-lg p-3 border border-white/20 focus:border-white/40 focus:outline-none resize-none"
+                  rows={2}
+                  placeholder="#hashtag1 #hashtag2 #hashtag3"
+                />
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {(post.caption || editCaption) && (
+                <p className="text-white/70 text-sm leading-relaxed">{editCaption || post.caption}</p>
+              )}
+
+              {(post.hashtags || editHashtags) && (
+                <p className="text-blue-400/80 text-xs mt-2 leading-relaxed">{editHashtags || post.hashtags}</p>
+              )}
+            </>
+          )}
+
+          {/* Meta info */}
+          <div className="flex items-center flex-wrap gap-2 mt-4">
+            {post.platform && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                {post.platform}
+              </span>
+            )}
+            {post.publishDate && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                📅 {new Date(post.publishDate).toLocaleDateString()}
+              </span>
+            )}
+            {isCarousel && post.images && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                📑 {carouselIndex + 1}/{post.images.length}
+              </span>
+            )}
+            {isEmbed && post.embedType && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60 capitalize">
+                {post.embedType}
+              </span>
+            )}
+            {isSaving && (
+              <span className="px-3 py-1 rounded-full bg-blue-500/50 text-xs text-white">
+                Saving...
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 // Sortable Post Item with sleek overlays and video support
-function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
+function SortablePostItem({ post, onSelect, isDragDisabled, showDetailedOverlays }: {
   post: SocialPost
   onSelect: (post: SocialPost) => void
   isDragDisabled: boolean
-  showOverlays: boolean
+  showDetailedOverlays: boolean
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -315,6 +521,7 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   const dateInfo = post.publishDate ? getDaysUntil(post.publishDate) : null
   const isVideo = post.mediaType === 'video'
   const isCarousel = post.mediaType === 'carousel'
+  const isEmbed = post.mediaType === 'embed'
 
   // Handle video hover play/pause
   useEffect(() => {
@@ -346,8 +553,25 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
       } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${isHovered && !isDragging ? 'scale-[1.02] shadow-lg z-10' : ''}`}
     >
-      {/* Video with hover-to-play */}
-      {isVideo && post.videoUrl ? (
+      {/* Embed placeholder */}
+      {isEmbed ? (
+        displayImage ? (
+          <img
+            src={displayImage}
+            alt={post.name || ''}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-500/20 via-pink-500/20 to-orange-400/20">
+            <span className="text-3xl mb-1">
+              {post.embedType === 'canva' ? '🎨' : post.embedType === 'youtube' ? '▶️' : post.embedType === 'vimeo' ? '🎥' : post.embedType === 'loom' ? '🔴' : '🔗'}
+            </span>
+            <span className="text-[9px] text-gray-500 capitalize">{post.embedType || 'Video'}</span>
+          </div>
+        )
+      ) : isVideo && post.videoUrl ? (
+        /* Video with hover-to-play */
         <>
           {/* Show thumbnail when not hovering */}
           {!isHovered && displayImage && (
@@ -379,10 +603,27 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         />
       )}
 
-      {showOverlays && (
+      {/* Status badge - ALWAYS visible */}
+      {post.status && statusStyles[post.status] && (
+        <div className={`absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8px] font-medium backdrop-blur-sm ${statusStyles[post.status].bg} ${statusStyles[post.status].text}`}>
+          {statusStyles[post.status].label}
+        </div>
+      )}
+
+      {/* Detailed overlays - only when toggled on */}
+      {showDetailedOverlays && (
         <>
+          {/* Embed icon - top right */}
+          {isEmbed && (
+            <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-1">
+              <span className="text-[10px]">
+                {post.embedType === 'canva' ? '🎨' : post.embedType === 'youtube' ? '▶️' : post.embedType === 'vimeo' ? '🎥' : post.embedType === 'loom' ? '🔴' : '🔗'}
+              </span>
+            </div>
+          )}
+
           {/* Video icon - top right */}
-          {isVideo && (
+          {isVideo && !isEmbed && (
             <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <svg className="w-2.5 h-2.5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
@@ -390,8 +631,8 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
             </div>
           )}
 
-          {/* Carousel indicator - top right (if not video) */}
-          {isCarousel && !isVideo && (
+          {/* Carousel indicator - top right (if not video or embed) */}
+          {isCarousel && !isVideo && !isEmbed && (
             <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-1">
               <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -404,13 +645,6 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
           {post.format && (
             <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90 flex items-center gap-0.5">
               <span>{formatIcons[post.format]}</span>
-            </div>
-          )}
-
-          {/* Status pill - bottom left */}
-          {post.status && statusStyles[post.status] && (
-            <div className={`absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8px] font-medium backdrop-blur-sm ${statusStyles[post.status].bg} ${statusStyles[post.status].text}`}>
-              {statusStyles[post.status].label}
             </div>
           )}
 
@@ -468,11 +702,12 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
-  const [showOverlays, setShowOverlays] = useState(true)
+  const [showDetailedOverlays, setShowDetailedOverlays] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const gridRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -530,7 +765,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const handleReset = useCallback(() => {
     setGridSize(DEFAULTS.gridSize)
     setSortMode(DEFAULTS.sortMode)
-    setShowOverlays(true)
+    setShowDetailedOverlays(false)
     setPosts(initialPosts)
     router.refresh()
   }, [initialPosts, router])
@@ -565,8 +800,11 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     }
   }
 
-  // Get posts for display (Instagram only)
-  const displayPosts = posts.slice(0, gridConfigs[gridSize].maxPosts)
+  // Get posts for display (filtered by status, limited by grid size)
+  const filteredPosts = statusFilter === 'all'
+    ? posts
+    : posts.filter(p => p.status === statusFilter)
+  const displayPosts = filteredPosts.slice(0, gridConfigs[gridSize].maxPosts)
 
   // Calculate color palette for visible posts (top 3 colors across all)
   const allColors = displayPosts.flatMap(p => {
@@ -636,9 +874,12 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
+      {/* Value Prop Headline */}
+      <p className="text-center text-sm text-gray-600 mb-3">Preview your grid before you post</p>
+
       {/* Compact Top Bar - Single Row Controls */}
       <div className="mb-3 flex items-center justify-between">
-        {/* Left: View + Sort (inline) */}
+        {/* Left: View + Sort + Filter */}
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex gap-0.5 bg-gray-100 rounded-full p-0.5">
@@ -670,22 +911,42 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
               {sortMode === 'slot' ? 'Manual' : 'Date'} <span className="text-gray-300">▾</span>
             </button>
           </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="text-gray-400">Show:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="text-gray-600 bg-transparent border-none text-[11px] cursor-pointer hover:text-gray-900 focus:outline-none"
+            >
+              <option value="all">All</option>
+              <option value="Idea">💡 Idea</option>
+              <option value="Draft">✏️ Draft</option>
+              <option value="Ready">✅ Ready</option>
+              <option value="Scheduled">📅 Scheduled</option>
+              <option value="Live">🚀 Live</option>
+            </select>
+          </div>
         </div>
 
-        {/* Right: Badges icon + post count */}
+        {/* Right: Eye icon toggle for detailed overlays */}
         <div className="flex items-center gap-2">
           {isSaving && <span className="text-[10px] text-blue-500">Saving...</span>}
-          <span className="text-[10px] text-gray-400">{displayPosts.length} posts</span>
-          {/* Badges Icon Toggle */}
+          {/* Eye Icon Toggle for detailed badges */}
           <button
-            onClick={() => setShowOverlays(!showOverlays)}
+            onClick={() => setShowDetailedOverlays(!showDetailedOverlays)}
             className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
-              showOverlays ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+              showDetailedOverlays ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
             }`}
-            title={showOverlays ? 'Hide badges' : 'Show badges'}
+            title={showDetailedOverlays ? 'Hide details' : 'Show details'}
           >
-            <svg className="w-3.5 h-3.5" fill={showOverlays ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {showDetailedOverlays ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              )}
             </svg>
           </button>
         </div>
@@ -704,7 +965,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                       post={post}
                       onSelect={setSelectedPost}
                       isDragDisabled={sortMode === 'date'}
-                      showOverlays={showOverlays}
+                      showDetailedOverlays={showDetailedOverlays}
                     />
                   ))}
                   {/* Empty slot placeholders - Visual Planning Mode */}
@@ -727,17 +988,17 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
               {sortMode === 'slot' ? '⤢ Drag posts to rearrange' : '📅 Sorted by date'}
             </p>
             <div className="flex items-center gap-2">
-              {/* Export Button */}
+              {/* Save Image Button */}
               <button
                 onClick={handleExport}
                 disabled={isExporting}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
-                title="Export as image"
+                title="Save grid as image"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                {isExporting ? 'Saving...' : 'Export'}
+                {isExporting ? 'Saving...' : 'Save Image'}
               </button>
               {/* Refresh Button */}
               <button
@@ -778,7 +1039,17 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
       {/* Photo Modal */}
       {selectedPost && (
-        <PhotoModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+        <PhotoModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          onUpdate={(updates) => {
+            // Update the post in state so changes reflect immediately
+            setPosts(posts.map(p =>
+              p.id === selectedPost.id ? { ...p, ...updates } : p
+            ))
+            setSelectedPost({ ...selectedPost, ...updates })
+          }}
+        />
       )}
 
       {/* Tutorial Overlay (first-time users) */}

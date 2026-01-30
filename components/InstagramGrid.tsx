@@ -7,18 +7,22 @@ interface InstagramGridProps {
   posts: InstagramPost[]
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
+  Idea: 'bg-purple-500',
   Draft: 'bg-gray-500',
   Ready: 'bg-yellow-500',
   Scheduled: 'bg-blue-500',
-  Posted: 'bg-green-500',
+  Live: 'bg-green-500',
+  Posted: 'bg-green-500', // Legacy support
 }
 
-const statusIcons = {
+const statusIcons: Record<string, string> = {
+  Idea: '💡',
   Draft: '✏️',
   Ready: '✅',
   Scheduled: '📅',
-  Posted: '🚀',
+  Live: '🚀',
+  Posted: '🚀', // Legacy support
 }
 
 export default function InstagramGrid({ posts }: InstagramGridProps) {
