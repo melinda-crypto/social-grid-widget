@@ -21,6 +21,11 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import PhoneMockup from './PhoneMockup'
+import AddPostModal from './AddPostModal'
+import TutorialOverlay from './TutorialOverlay'
+
+// Local storage key for tutorial
+const TUTORIAL_SHOWN_KEY = 'social-grid-tutorial-shown'
 
 type ViewMode = 'grid' | 'phone'
 
@@ -343,7 +348,7 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
       } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${
         showOverlays && post.status ? `border-l-[3px] ${statusColors[post.status]}` : ''
-      }`}
+      } ${isHovered && !isDragging ? 'scale-[1.02] shadow-lg z-10' : ''}`}
     >
       {/* Video with hover-to-play */}
       {isVideo && post.videoUrl ? (
@@ -431,6 +436,23 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   )
 }
 
+// Empty slot placeholder component
+function EmptySlot({ onClick, slotNumber }: { onClick: () => void; slotNumber: number }) {
+  return (
+    <div
+      onClick={onClick}
+      className="relative aspect-square bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 group"
+    >
+      <div className="w-8 h-8 rounded-full bg-gray-200 group-hover:bg-gray-300 flex items-center justify-center transition-colors">
+        <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      </div>
+      <span className="text-[9px] text-gray-400 mt-1 group-hover:text-gray-500">Add post</span>
+    </div>
+  )
+}
+
 export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null)
@@ -442,7 +464,64 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [showOverlays, setShowOverlays] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalSlot, setAddModalSlot] = useState<number | undefined>(undefined)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const gridRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Check if tutorial should be shown (first time user)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const tutorialShown = localStorage.getItem(TUTORIAL_SHOWN_KEY)
+      if (!tutorialShown && initialPosts.length > 0) {
+        setShowTutorial(true)
+      }
+    }
+  }, [initialPosts.length])
+
+  const dismissTutorial = () => {
+    setShowTutorial(false)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(TUTORIAL_SHOWN_KEY, 'true')
+    }
+  }
+
+  // Export grid as image
+  const handleExport = async () => {
+    if (!gridRef.current) return
+    setIsExporting(true)
+
+    try {
+      // Dynamic import html2canvas
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(gridRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      })
+
+      // Download the image
+      const link = document.createElement('a')
+      link.download = `social-grid-${new Date().toISOString().split('T')[0]}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (error) {
+      console.error('Export failed:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Handle adding a post
+  const handleAddPost = (slot?: number) => {
+    setAddModalSlot(slot)
+    setShowAddModal(true)
+  }
+
+  const handlePostAdded = () => {
+    router.refresh()
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -506,13 +585,62 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     return []
   })
 
-  if (posts.length === 0) {
+  // Demo posts for empty state
+  const demoPosts: SocialPost[] = [
+    { id: 'demo-1', imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=400&fit=crop', mediaType: 'image', format: 'Feed Post', status: 'Ready' },
+    { id: 'demo-2', imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=400&fit=crop', mediaType: 'image', format: 'Reel', status: 'Scheduled' },
+    { id: 'demo-3', imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop', mediaType: 'image', format: 'Carousel', status: 'Draft' },
+    { id: 'demo-4', imageUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=400&fit=crop', mediaType: 'image', format: 'Feed Post', status: 'Ready' },
+    { id: 'demo-5', imageUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop', mediaType: 'image', format: 'Story', status: 'Draft' },
+    { id: 'demo-6', imageUrl: 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&h=400&fit=crop', mediaType: 'image', format: 'Reel', status: 'Ready' },
+    { id: 'demo-7', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', mediaType: 'image', format: 'Feed Post', status: 'Draft' },
+    { id: 'demo-8', imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop', mediaType: 'image', format: 'Feed Post', status: 'Scheduled' },
+    { id: 'demo-9', imageUrl: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=400&fit=crop', mediaType: 'image', format: 'Carousel', status: 'Draft' },
+  ]
+
+  const isDemo = posts.length === 0
+  const postsToUse = isDemo ? demoPosts : posts
+
+  if (isDemo) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] text-gray-400">
-        <p>No posts yet</p>
-        <button onClick={handleReset} className="mt-4 text-sm text-gray-500 hover:text-gray-700">
-          Refresh
-        </button>
+      <div className="w-full max-w-md mx-auto">
+        {/* Demo badge */}
+        <div className="mb-3 text-center">
+          <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
+            ✨ Demo Mode — Connect your Notion database to get started
+          </span>
+        </div>
+
+        {/* Demo Grid */}
+        <div className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100 opacity-75">
+          <div className="grid grid-cols-3 gap-[1px] bg-gray-100">
+            {demoPosts.map((post) => (
+              <div key={post.id} className="relative aspect-square bg-gray-100">
+                <img
+                  src={post.imageUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                {post.format && (
+                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90">
+                    {formatIcons[post.format]}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="mt-4 text-center space-y-2">
+          <p className="text-sm text-gray-500">See your content together, before you post.</p>
+          <button
+            onClick={handleReset}
+            className="px-4 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
+          >
+            Refresh to load posts
+          </button>
+        </div>
       </div>
     )
   }
@@ -667,7 +795,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       {/* Grid View */}
       {viewMode === 'grid' && (
         <>
-          <div className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
+          <div ref={gridRef} className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-3 gap-[1px] bg-gray-100">
@@ -680,15 +808,51 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                       showOverlays={showOverlays}
                     />
                   ))}
+                  {/* Empty slot placeholders - Visual Planning Mode */}
+                  {displayPosts.length < gridConfigs[gridSize].maxPosts &&
+                    Array.from({ length: gridConfigs[gridSize].maxPosts - displayPosts.length }).map((_, i) => (
+                      <EmptySlot
+                        key={`empty-${i}`}
+                        slotNumber={displayPosts.length + i + 1}
+                        onClick={() => handleAddPost(displayPosts.length + i + 1)}
+                      />
+                    ))
+                  }
                 </div>
               </SortableContext>
             </DndContext>
           </div>
 
-          {/* Minimal Footer */}
-          <p className="mt-3 text-center text-[10px] text-gray-300">
-            {sortMode === 'slot' ? 'Drag to reorder' : 'Sorted by date'}
-          </p>
+          {/* Action Footer */}
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-[10px] text-gray-400">
+              {sortMode === 'slot' ? '↔️ Drag to reorder' : '📅 Sorted by date'} • {displayPosts.length}/{gridConfigs[gridSize].maxPosts} posts
+            </p>
+            <div className="flex items-center gap-2">
+              {/* Export Button */}
+              <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                title="Export as image"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {isExporting ? 'Saving...' : 'Export'}
+              </button>
+              {/* Add Post Button */}
+              <button
+                onClick={() => handleAddPost()}
+                className="flex items-center gap-1 px-2.5 py-1 bg-gray-900 text-white text-[10px] rounded-full hover:bg-gray-800 transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Post
+              </button>
+            </div>
+          </div>
         </>
       )}
 
@@ -716,6 +880,20 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       {/* Photo Modal */}
       {selectedPost && (
         <PhotoModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      )}
+
+      {/* Add Post Modal */}
+      {showAddModal && (
+        <AddPostModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handlePostAdded}
+          suggestedSlot={addModalSlot}
+        />
+      )}
+
+      {/* Tutorial Overlay (first-time users) */}
+      {showTutorial && (
+        <TutorialOverlay onDismiss={dismissTutorial} />
       )}
     </div>
   )
