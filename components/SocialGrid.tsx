@@ -551,7 +551,7 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showDetailedOverlays
       onMouseLeave={() => setIsHovered(false)}
       className={`relative aspect-square overflow-hidden bg-gray-100 transition-all duration-200 ${
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${isHovered && !isDragging ? 'scale-[1.02] shadow-lg z-10' : ''}`}
+      } ${isDragging ? 'opacity-90 scale-105 z-50 shadow-xl ring-2 ring-gray-900/20' : ''} ${isHovered && !isDragging ? 'scale-[1.01] z-10' : ''}`}
     >
       {/* Embed placeholder */}
       {isEmbed ? (
@@ -661,16 +661,16 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showDetailedOverlays
         </>
       )}
 
-      {/* Drag handle - shows on hover when dragging is enabled */}
+      {/* Drag handle - top-left corner on hover when dragging is enabled */}
       {isHovered && !isDragDisabled && !isDragging && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <svg className="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="9" cy="6" r="1.5" />
-            <circle cx="15" cy="6" r="1.5" />
-            <circle cx="9" cy="12" r="1.5" />
-            <circle cx="15" cy="12" r="1.5" />
-            <circle cx="9" cy="18" r="1.5" />
-            <circle cx="15" cy="18" r="1.5" />
+        <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded bg-black/50 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <svg className="w-3 h-3 text-white/90" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="8" cy="6" r="2" />
+            <circle cx="16" cy="6" r="2" />
+            <circle cx="8" cy="12" r="2" />
+            <circle cx="16" cy="12" r="2" />
+            <circle cx="8" cy="18" r="2" />
+            <circle cx="16" cy="18" r="2" />
           </svg>
         </div>
       )}
@@ -692,6 +692,17 @@ function EmptySlot({ slotNumber }: { slotNumber: number }) {
   return (
     <div className="relative aspect-square bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
       <span className="text-[10px] text-gray-300 font-medium">{slotNumber}</span>
+    </div>
+  )
+}
+
+// Low-content placeholder for first-time/sparse grids
+function LowContentPlaceholder() {
+  return (
+    <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100/50 border-2 border-dashed border-gray-200 rounded-sm flex flex-col items-center justify-center">
+      <div className="w-6 h-6 rounded-full bg-gray-200/80 flex items-center justify-center mb-1">
+        <span className="text-gray-400 text-xs">+</span>
+      </div>
     </div>
   )
 }
@@ -874,80 +885,64 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Value Prop Headline */}
-      <p className="text-center text-sm text-gray-600 mb-3">Preview your grid before you post</p>
-
-      {/* Compact Top Bar - Single Row Controls */}
-      <div className="mb-3 flex items-center justify-between">
-        {/* Left: View + Sort + Filter */}
-        <div className="flex items-center gap-3">
-          {/* View Toggle */}
-          <div className="flex gap-0.5 bg-gray-100 rounded-full p-0.5">
+      {/* Subtle Top Bar - visually secondary to the grid */}
+      <div className="mb-2 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity">
+        {/* Left: View + Sort + Filter - all compact */}
+        <div className="flex items-center gap-2">
+          {/* View Toggle - minimal */}
+          <div className="flex gap-0.5 bg-gray-100/80 rounded-full p-0.5">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-2.5 py-1 text-[11px] rounded-full transition-all ${
-                viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'
+              className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                viewMode === 'grid' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-400'
               }`}
             >
               Grid
             </button>
             <button
               onClick={() => setViewMode('phone')}
-              className={`px-2 py-1 text-[11px] rounded-full transition-all ${
-                viewMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'
+              className={`px-1.5 py-0.5 text-[10px] rounded-full transition-all ${
+                viewMode === 'phone' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-400'
               }`}
             >
               📱
             </button>
           </div>
 
-          {/* Sort Toggle (inline, compact) */}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="text-gray-400">Sort:</span>
-            <button
-              onClick={() => setSortMode(sortMode === 'slot' ? 'date' : 'slot')}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              {sortMode === 'slot' ? 'Manual' : 'Date'} <span className="text-gray-300">▾</span>
-            </button>
-          </div>
+          {/* Sort Toggle - lighter */}
+          <button
+            onClick={() => setSortMode(sortMode === 'slot' ? 'date' : 'slot')}
+            className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {sortMode === 'slot' ? 'Manual' : 'Date'} ▾
+          </button>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="text-gray-400">Show:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="text-gray-600 bg-transparent border-none text-[11px] cursor-pointer hover:text-gray-900 focus:outline-none"
-            >
-              <option value="all">All</option>
-              <option value="Idea">💡 Idea</option>
-              <option value="Draft">✏️ Draft</option>
-              <option value="Ready">✅ Ready</option>
-              <option value="Scheduled">📅 Scheduled</option>
-              <option value="Live">🚀 Live</option>
-            </select>
-          </div>
+          {/* Status Filter - lighter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className="text-gray-400 bg-transparent border-none text-[10px] cursor-pointer hover:text-gray-600 focus:outline-none"
+          >
+            <option value="all">All</option>
+            <option value="Idea">Idea</option>
+            <option value="Draft">Draft</option>
+            <option value="Ready">Ready</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Live">Live</option>
+          </select>
         </div>
 
-        {/* Right: Eye icon toggle for detailed overlays */}
-        <div className="flex items-center gap-2">
-          {isSaving && <span className="text-[10px] text-blue-500">Saving...</span>}
-          {/* Eye Icon Toggle for detailed badges */}
+        {/* Right: Badge toggle - simple 🏷 icon */}
+        <div className="flex items-center gap-1.5">
+          {isSaving && <span className="text-[9px] text-blue-500">Saving...</span>}
           <button
             onClick={() => setShowDetailedOverlays(!showDetailedOverlays)}
-            className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
-              showDetailedOverlays ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            className={`px-1.5 py-0.5 rounded text-[10px] transition-all ${
+              showDetailedOverlays ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:text-gray-600'
             }`}
             title={showDetailedOverlays ? 'Hide details' : 'Show details'}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {showDetailedOverlays ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              )}
-            </svg>
+            🏷
           </button>
         </div>
       </div>
@@ -955,6 +950,14 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       {/* Grid View */}
       {viewMode === 'grid' && (
         <>
+          {/* Low-content guidance (0-2 posts) */}
+          {displayPosts.length < 3 && (
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-500">Your upcoming posts will appear here</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Add posts in Notion — they'll show up automatically</p>
+            </div>
+          )}
+
           <div ref={gridRef} className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
@@ -968,8 +971,14 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                       showDetailedOverlays={showDetailedOverlays}
                     />
                   ))}
-                  {/* Empty slot placeholders - Visual Planning Mode */}
-                  {displayPosts.length < gridConfigs[gridSize].maxPosts &&
+                  {/* Low-content placeholders (when 0-2 posts) */}
+                  {displayPosts.length < 3 &&
+                    Array.from({ length: 3 - displayPosts.length }).map((_, i) => (
+                      <LowContentPlaceholder key={`placeholder-${i}`} />
+                    ))
+                  }
+                  {/* Regular empty slot placeholders (when 3+ posts but not full) */}
+                  {displayPosts.length >= 3 && displayPosts.length < gridConfigs[gridSize].maxPosts &&
                     Array.from({ length: gridConfigs[gridSize].maxPosts - displayPosts.length }).map((_, i) => (
                       <EmptySlot
                         key={`empty-${i}`}
@@ -984,8 +993,8 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
           {/* Action Footer - with subtle divider */}
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-[10px] text-gray-500">
-              {sortMode === 'slot' ? '⤢ Drag posts to rearrange' : '📅 Sorted by date'}
+            <p className="text-[10px] text-gray-600 font-medium">
+              {sortMode === 'slot' ? '⤢ Drag posts to rearrange your feed' : '📅 Sorted by publish date'}
             </p>
             <div className="flex items-center gap-2">
               {/* Save Image Button */}
