@@ -21,7 +21,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import PhoneMockup from './PhoneMockup'
-import AddPostModal from './AddPostModal'
 import TutorialOverlay from './TutorialOverlay'
 
 // Local storage key for tutorial
@@ -454,19 +453,11 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   )
 }
 
-// Empty slot placeholder component
-function EmptySlot({ onClick }: { onClick: () => void; slotNumber: number }) {
+// Empty slot placeholder component (visual only - add posts in Notion)
+function EmptySlot({ slotNumber }: { slotNumber: number }) {
   return (
-    <div
-      onClick={onClick}
-      className="relative aspect-square bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100/50 hover:border-gray-300 transition-all duration-200 group"
-    >
-      <div className="w-7 h-7 rounded-full bg-gray-200/80 group-hover:bg-gray-300/80 flex items-center justify-center transition-colors">
-        <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      </div>
-      <span className="text-[8px] text-gray-400 mt-1 group-hover:text-gray-500 tracking-wide">Add post</span>
+    <div className="relative aspect-square bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
+      <span className="text-[10px] text-gray-300 font-medium">{slotNumber}</span>
     </div>
   )
 }
@@ -480,8 +471,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [showOverlays, setShowOverlays] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [addModalSlot, setAddModalSlot] = useState<number | undefined>(undefined)
   const [showTutorial, setShowTutorial] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -531,16 +520,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     } finally {
       setIsExporting(false)
     }
-  }
-
-  // Handle adding a post
-  const handleAddPost = (slot?: number) => {
-    setAddModalSlot(slot)
-    setShowAddModal(true)
-  }
-
-  const handlePostAdded = () => {
-    router.refresh()
   }
 
   const sensors = useSensors(
@@ -734,7 +713,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                       <EmptySlot
                         key={`empty-${i}`}
                         slotNumber={displayPosts.length + i + 1}
-                        onClick={() => handleAddPost(displayPosts.length + i + 1)}
                       />
                     ))
                   }
@@ -761,15 +739,16 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                 </svg>
                 {isExporting ? 'Saving...' : 'Export'}
               </button>
-              {/* Add post Button - lowercase */}
+              {/* Refresh Button */}
               <button
-                onClick={() => handleAddPost()}
+                onClick={handleReset}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg hover:bg-gray-800 transition-colors"
+                title="Refresh from Notion"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Add post
+                Refresh
               </button>
             </div>
           </div>
@@ -800,15 +779,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       {/* Photo Modal */}
       {selectedPost && (
         <PhotoModal post={selectedPost} onClose={() => setSelectedPost(null)} />
-      )}
-
-      {/* Add Post Modal */}
-      {showAddModal && (
-        <AddPostModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handlePostAdded}
-          suggestedSlot={addModalSlot}
-        />
       )}
 
       {/* Tutorial Overlay (first-time users) */}
