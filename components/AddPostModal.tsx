@@ -13,7 +13,6 @@ export default function AddPostModal({ onClose, onSuccess, suggestedSlot }: AddP
   const [imageUrl, setImageUrl] = useState('')
   const [caption, setCaption] = useState('')
   const [format, setFormat] = useState<string>('Feed Post')
-  const [platform, setPlatform] = useState<string>('Instagram')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -49,7 +48,6 @@ export default function AddPostModal({ onClose, onSuccess, suggestedSlot }: AddP
           imageUrl: imageUrl || undefined,
           caption: caption || undefined,
           format,
-          platform,
           slot: suggestedSlot,
         }),
       })
@@ -148,37 +146,21 @@ export default function AddPostModal({ onClose, onSuccess, suggestedSlot }: AddP
             />
           </div>
 
-          {/* Format & Platform Row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Format
-              </label>
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm bg-white"
-              >
-                <option value="Feed Post">📷 Feed Post</option>
-                <option value="Reel">🎬 Reel</option>
-                <option value="Story">⏱️ Story</option>
-                <option value="Carousel">📑 Carousel</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Platform
-              </label>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm bg-white"
-              >
-                <option value="Instagram">Instagram</option>
-                <option value="TikTok">TikTok</option>
-              </select>
-            </div>
+          {/* Format */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Format
+            </label>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm bg-white"
+            >
+              <option value="Feed Post">📷 Feed Post</option>
+              <option value="Reel">🎬 Reel</option>
+              <option value="Story">⏱️ Story</option>
+              <option value="Carousel">📑 Carousel</option>
+            </select>
           </div>
 
           {/* Error */}

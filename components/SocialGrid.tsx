@@ -34,8 +34,6 @@ interface SocialGridProps {
 }
 
 type GridSize = '3x3' | '3x4' | '3x5'
-type PlatformFilter = 'all' | 'Instagram' | 'TikTok'
-type FormatFilter = 'all' | 'Feed Post' | 'Reel' | 'Story' | 'Carousel'
 type SortMode = 'slot' | 'date'
 
 const gridConfigs = {
@@ -46,8 +44,6 @@ const gridConfigs = {
 
 const DEFAULTS = {
   gridSize: '3x3' as GridSize,
-  platformFilter: 'all' as PlatformFilter,
-  formatFilter: 'all' as FormatFilter,
   sortMode: 'slot' as SortMode,
 }
 
@@ -465,8 +461,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
-  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(DEFAULTS.platformFilter)
-  const [formatFilter, setFormatFilter] = useState<FormatFilter>(DEFAULTS.formatFilter)
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULTS.sortMode)
   const [showOverlays, setShowOverlays] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -541,8 +535,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   const handleReset = useCallback(() => {
     setGridSize(DEFAULTS.gridSize)
-    setPlatformFilter(DEFAULTS.platformFilter)
-    setFormatFilter(DEFAULTS.formatFilter)
     setSortMode(DEFAULTS.sortMode)
     setShowOverlays(true)
     setPosts(initialPosts)
@@ -579,16 +571,8 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
     }
   }
 
-  // Apply filters
-  let filteredPosts = posts
-  if (platformFilter !== 'all') {
-    filteredPosts = filteredPosts.filter(p => p.platform === platformFilter)
-  }
-  if (formatFilter !== 'all') {
-    filteredPosts = filteredPosts.filter(p => p.format === formatFilter)
-  }
-
-  const displayPosts = filteredPosts.slice(0, gridConfigs[gridSize].maxPosts)
+  // Get posts for display (Instagram only)
+  const displayPosts = posts.slice(0, gridConfigs[gridSize].maxPosts)
 
   // Calculate color palette for visible posts (top 3 colors across all)
   const allColors = displayPosts.flatMap(p => {
@@ -721,24 +705,6 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
               >
                 Date
               </button>
-            </div>
-          </div>
-
-          {/* Platform */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">Platform</span>
-            <div className="flex gap-1">
-              {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatformFilter(p)}
-                  className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
-                    platformFilter === p ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
-                  }`}
-                >
-                  {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
-                </button>
-              ))}
             </div>
           </div>
 

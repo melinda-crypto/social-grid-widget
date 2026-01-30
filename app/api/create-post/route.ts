@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, imageUrl, caption, format, platform, slot } = await request.json()
+    const { name, imageUrl, caption, format, slot } = await request.json()
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -39,10 +39,6 @@ export async function POST(request: NextRequest) {
 
     if (format) {
       properties['Format'] = { select: { name: format } }
-    }
-
-    if (platform) {
-      properties['Platform'] = { select: { name: platform } }
     }
 
     if (slot !== undefined) {

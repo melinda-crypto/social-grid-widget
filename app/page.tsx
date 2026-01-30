@@ -3,31 +3,28 @@ import CheckoutButton from '@/components/CheckoutButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Social Grid Widget | Visual Instagram & TikTok Planner for Notion',
-  description: 'Plan your Instagram and TikTok feed visually inside Notion. Drag-and-drop grid planner with iPhone preview, format badges, and date countdowns. Used by content creators and agencies.',
+  title: 'Instagram Grid Planner | Visual Feed Planner for Notion',
+  description: 'Plan your Instagram feed visually inside Notion. Drag-and-drop grid planner with iPhone preview, format badges, and date countdowns. Used by content creators and agencies.',
   keywords: [
     'notion instagram planner',
     'instagram grid planner',
     'notion widget',
-    'social media planner',
-    'tiktok content planner',
     'instagram feed preview',
     'notion template',
     'content calendar notion',
     'visual content planner',
     'instagram aesthetic planner',
-    'social media manager tools',
     'notion for creators',
     'instagram grid preview',
     'content planning tool',
-    'social media scheduling'
+    'instagram scheduling'
   ],
   authors: [{ name: 'MAI Digital', url: 'https://maidigital.co' }],
   creator: 'MAI Digital',
   publisher: 'MAI Digital',
   openGraph: {
-    title: 'Social Grid Widget | Plan Your Instagram Feed in Notion',
-    description: 'Drag-and-drop visual planner for Instagram & TikTok. See your feed before you post. iPhone preview included.',
+    title: 'Instagram Grid Planner | Plan Your Feed in Notion',
+    description: 'Drag-and-drop visual Instagram planner. See your feed before you post. iPhone preview included.',
     type: 'website',
     locale: 'en_GB',
     siteName: 'MAI Digital',
@@ -36,14 +33,14 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Social Grid Widget - Visual Instagram Planner for Notion',
+        alt: 'Instagram Grid Planner - Visual Feed Planner for Notion',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Social Grid Widget | Visual Instagram Planner for Notion',
-    description: 'Plan your Instagram & TikTok feed visually. Drag-and-drop, iPhone preview, format badges.',
+    title: 'Instagram Grid Planner | Visual Feed Planner for Notion',
+    description: 'Plan your Instagram feed visually. Drag-and-drop, iPhone preview, format badges.',
     images: ['/og-image.png'],
     creator: '@maidigital',
   },
@@ -217,11 +214,11 @@ export default function LandingPage() {
       <section className="relative z-10 py-8 bg-white border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-sm text-gray-400">
-            <span>Used by creators at</span>
-            <span className="font-medium text-gray-600">Instagram</span>
-            <span className="font-medium text-gray-600">TikTok</span>
-            <span className="font-medium text-gray-600">Pinterest</span>
+            <span>Trusted by</span>
+            <span className="font-medium text-gray-600">Content Creators</span>
+            <span className="font-medium text-gray-600">Social Media Managers</span>
             <span className="font-medium text-gray-600">Agencies</span>
+            <span className="font-medium text-gray-600">Brands</span>
           </div>
         </div>
       </section>
@@ -346,7 +343,7 @@ export default function LandingPage() {
 
               <div className="space-y-3 mb-8">
                 {[
-                  'Social Grid Widget',
+                  'Instagram Grid Planner Widget',
                   'iPhone Preview Mockup',
                   'Notion Database Template',
                   'Format & Status Badges',
@@ -446,7 +443,7 @@ export default function LandingPage() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'Social Grid Widget',
+            name: 'Instagram Grid Planner',
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             offers: {
@@ -459,7 +456,7 @@ export default function LandingPage() {
               ratingValue: '4.9',
               ratingCount: '127',
             },
-            description: 'Visual Instagram and TikTok grid planner for Notion. Drag-and-drop interface with iPhone preview mode.',
+            description: 'Visual Instagram grid planner for Notion. Drag-and-drop interface with iPhone preview mode.',
             creator: {
               '@type': 'Organization',
               name: 'MAI Digital',

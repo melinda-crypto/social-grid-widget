@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'IG Grid Planner Widget',
-  description: 'Instagram Grid Widget for Notion',
+  title: 'Instagram Grid Planner',
+  description: 'Plan your Instagram feed visually. Powered by Notion.',
 }
 
 export default function RootLayout({
