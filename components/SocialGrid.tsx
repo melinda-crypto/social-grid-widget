@@ -59,19 +59,21 @@ const formatIcons: Record<string, string> = {
   'Carousel': '📑',
 }
 
-// Status colors - now used for left border
-const statusColors: Record<string, string> = {
-  'Draft': 'border-l-gray-400',
-  'Ready': 'border-l-amber-400',
-  'Scheduled': 'border-l-blue-400',
-  'Posted': 'border-l-emerald-400',
+// Status pill styles - clean 5-stage workflow (synced with Notion)
+const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
+  'Idea': { bg: 'bg-purple-500/80', text: 'text-white', label: '💡 Idea' },
+  'Draft': { bg: 'bg-gray-500/80', text: 'text-white', label: '✏️ Draft' },
+  'Ready': { bg: 'bg-amber-500/80', text: 'text-white', label: '✅ Ready' },
+  'Scheduled': { bg: 'bg-blue-500/80', text: 'text-white', label: '📅 Scheduled' },
+  'Live': { bg: 'bg-emerald-500/80', text: 'text-white', label: '🟢 Live' },
 }
 
 const statusBgColors: Record<string, string> = {
-  'Draft': 'bg-gray-400',
-  'Ready': 'bg-amber-400',
-  'Scheduled': 'bg-blue-400',
-  'Posted': 'bg-emerald-400',
+  'Idea': 'bg-purple-500',
+  'Draft': 'bg-gray-500',
+  'Ready': 'bg-amber-500',
+  'Scheduled': 'bg-blue-500',
+  'Live': 'bg-emerald-500',
 }
 
 // Calculate days until publish
@@ -346,9 +348,7 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
       onMouseLeave={() => setIsHovered(false)}
       className={`relative aspect-square overflow-hidden bg-gray-100 transition-all duration-200 ${
         isDragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${
-        showOverlays && post.status ? `border-l-[3px] ${statusColors[post.status]}` : ''
-      } ${isHovered && !isDragging ? 'scale-[1.02] shadow-lg z-10' : ''}`}
+      } ${isDragging ? 'opacity-50 scale-105 z-50' : ''} ${isHovered && !isDragging ? 'scale-[1.02] shadow-lg z-10' : ''}`}
     >
       {/* Video with hover-to-play */}
       {isVideo && post.videoUrl ? (
@@ -408,6 +408,13 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
           {post.format && (
             <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90 flex items-center gap-0.5">
               <span>{formatIcons[post.format]}</span>
+            </div>
+          )}
+
+          {/* Status pill - bottom left */}
+          {post.status && statusStyles[post.status] && (
+            <div className={`absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8px] font-medium backdrop-blur-sm ${statusStyles[post.status].bg} ${statusStyles[post.status].text}`}>
+              {statusStyles[post.status].label}
             </div>
           )}
 
