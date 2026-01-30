@@ -56,12 +56,13 @@ const formatIcons: Record<string, string> = {
 }
 
 // Status pill styles - clean 5-stage workflow (synced with Notion)
+// Softened opacity for less visual dominance
 const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
-  'Idea': { bg: 'bg-purple-500/80', text: 'text-white', label: '💡 Idea' },
-  'Draft': { bg: 'bg-gray-500/80', text: 'text-white', label: '✏️ Draft' },
-  'Ready': { bg: 'bg-amber-500/80', text: 'text-white', label: '✅ Ready' },
-  'Scheduled': { bg: 'bg-blue-500/80', text: 'text-white', label: '📅 Scheduled' },
-  'Live': { bg: 'bg-emerald-500/80', text: 'text-white', label: '🟢 Live' },
+  'Idea': { bg: 'bg-purple-500/60', text: 'text-white', label: 'Idea' },
+  'Draft': { bg: 'bg-gray-500/60', text: 'text-white', label: 'Draft' },
+  'Ready': { bg: 'bg-amber-500/60', text: 'text-white', label: 'Ready' },
+  'Scheduled': { bg: 'bg-blue-500/60', text: 'text-white', label: 'Scheduled' },
+  'Live': { bg: 'bg-emerald-500/60', text: 'text-white', label: 'Live' },
 }
 
 const statusBgColors: Record<string, string> = {
@@ -427,8 +428,22 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         </>
       )}
 
+      {/* Drag handle - shows on hover when dragging is enabled */}
+      {isHovered && !isDragDisabled && !isDragging && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <svg className="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="9" cy="6" r="1.5" />
+            <circle cx="15" cy="6" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" />
+            <circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="18" r="1.5" />
+            <circle cx="15" cy="18" r="1.5" />
+          </svg>
+        </div>
+      )}
+
       {/* Caption preview on hover (only for images, not when video is playing) */}
-      {isHovered && post.caption && !isVideo && (
+      {isHovered && post.caption && !isVideo && !isDragDisabled && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-10">
           <p className="text-white text-[9px] leading-tight line-clamp-2 font-medium">
             {post.caption}
@@ -440,18 +455,18 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
 }
 
 // Empty slot placeholder component
-function EmptySlot({ onClick, slotNumber }: { onClick: () => void; slotNumber: number }) {
+function EmptySlot({ onClick }: { onClick: () => void; slotNumber: number }) {
   return (
     <div
       onClick={onClick}
-      className="relative aspect-square bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 group"
+      className="relative aspect-square bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100/50 hover:border-gray-300 transition-all duration-200 group"
     >
-      <div className="w-8 h-8 rounded-full bg-gray-200 group-hover:bg-gray-300 flex items-center justify-center transition-colors">
-        <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-7 h-7 rounded-full bg-gray-200/80 group-hover:bg-gray-300/80 flex items-center justify-center transition-colors">
+        <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
       </div>
-      <span className="text-[9px] text-gray-400 mt-1 group-hover:text-gray-500">Add post</span>
+      <span className="text-[8px] text-gray-400 mt-1 group-hover:text-gray-500 tracking-wide">Add post</span>
     </div>
   )
 }
@@ -642,88 +657,60 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Minimal Top Bar */}
+      {/* Compact Top Bar - Single Row Controls */}
       <div className="mb-3 flex items-center justify-between">
-        {/* View Toggle */}
-        <div className="flex gap-1 bg-gray-100 rounded-full p-0.5">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`px-3 py-1.5 text-xs rounded-full transition-all ${
-              viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode('phone')}
-            className={`px-3 py-1.5 text-xs rounded-full transition-all ${
-              viewMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            📱
-          </button>
+        {/* Left: View + Sort (inline) */}
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="flex gap-0.5 bg-gray-100 rounded-full p-0.5">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-2.5 py-1 text-[11px] rounded-full transition-all ${
+                viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('phone')}
+              className={`px-2 py-1 text-[11px] rounded-full transition-all ${
+                viewMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'
+              }`}
+            >
+              📱
+            </button>
+          </div>
+
+          {/* Sort Toggle (inline, compact) */}
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="text-gray-400">Sort:</span>
+            <button
+              onClick={() => setSortMode(sortMode === 'slot' ? 'date' : 'slot')}
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              {sortMode === 'slot' ? 'Manual' : 'Date'} <span className="text-gray-300">▾</span>
+            </button>
+          </div>
         </div>
 
-        {/* Post count & Settings toggle */}
+        {/* Right: Badges icon + post count */}
         <div className="flex items-center gap-2">
           {isSaving && <span className="text-[10px] text-blue-500">Saving...</span>}
           <span className="text-[10px] text-gray-400">{displayPosts.length} posts</span>
+          {/* Badges Icon Toggle */}
           <button
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-              settingsOpen ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            onClick={() => setShowOverlays(!showOverlays)}
+            className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+              showOverlays ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
             }`}
+            title={showOverlays ? 'Hide badges' : 'Show badges'}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg className="w-3.5 h-3.5" fill={showOverlays ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
             </svg>
           </button>
         </div>
       </div>
-
-      {/* Minimal Settings Dropdown */}
-      {settingsOpen && (
-        <div className="mb-4 p-3 bg-gray-50/80 backdrop-blur-sm rounded-xl space-y-3 border border-gray-100 shadow-sm">
-          {/* Sort */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">Sort by</span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setSortMode('slot')}
-                className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
-                  sortMode === 'slot' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                Manual
-              </button>
-              <button
-                onClick={() => setSortMode('date')}
-                className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
-                  sortMode === 'date' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                Date
-              </button>
-            </div>
-          </div>
-
-          {/* Badges Toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">Show badges</span>
-            <button
-              onClick={() => setShowOverlays(!showOverlays)}
-              className={`w-10 h-5 rounded-full transition-colors relative ${
-                showOverlays ? 'bg-gray-900' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                showOverlays ? 'left-5' : 'left-0.5'
-              }`} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Grid View */}
       {viewMode === 'grid' && (
@@ -756,33 +743,33 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
             </DndContext>
           </div>
 
-          {/* Action Footer */}
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-[10px] text-gray-400">
-              {sortMode === 'slot' ? '↔️ Drag to reorder' : '📅 Sorted by date'} • {displayPosts.length}/{gridConfigs[gridSize].maxPosts} posts
+          {/* Action Footer - with subtle divider */}
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-[10px] text-gray-500">
+              {sortMode === 'slot' ? '⤢ Drag posts to rearrange' : '📅 Sorted by date'}
             </p>
             <div className="flex items-center gap-2">
               {/* Export Button */}
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
                 title="Export as image"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 {isExporting ? 'Saving...' : 'Export'}
               </button>
-              {/* Add Post Button */}
+              {/* Add post Button - lowercase */}
               <button
                 onClick={() => handleAddPost()}
-                className="flex items-center gap-1 px-2.5 py-1 bg-gray-900 text-white text-[10px] rounded-full hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg hover:bg-gray-800 transition-colors"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Post
+                Add post
               </button>
             </div>
           </div>
