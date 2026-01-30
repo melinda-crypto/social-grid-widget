@@ -499,6 +499,9 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       const canvas = await html2canvas(gridRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
       })
 
       // Download the image
@@ -508,6 +511,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       link.click()
     } catch (error) {
       console.error('Export failed:', error)
+      alert('Export failed. Some external images may not be captured due to security restrictions.')
     } finally {
       setIsExporting(false)
     }
