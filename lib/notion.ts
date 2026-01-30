@@ -14,6 +14,12 @@ export interface SocialPost {
   platform?: 'Instagram' | 'TikTok'
   format?: 'Feed Post' | 'Reel' | 'Story' | 'Carousel'
   publishDate?: string
+  // Video support
+  videoUrl?: string
+  thumbnailUrl?: string
+  mediaType: 'image' | 'video' | 'carousel'
+  // Carousel support (multiple images)
+  images?: string[]
 }
 
 // Keep for backward compatibility
@@ -49,11 +55,35 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
       const firstImage = imageFiles[0]
       const fileImageUrl = firstImage?.file?.url || firstImage?.external?.url || ''
 
+      // Get ALL images for carousel support
+      const allImages = imageFiles
+        .map((img: any) => img?.file?.url || img?.external?.url)
+        .filter(Boolean)
+
       // Check for Canva URL or Image URL field as fallback
       const canvaUrl = properties['Canva URL']?.url || properties['Image URL']?.url || ''
 
       // Prefer uploaded file, fall back to URL
       const imageUrl = fileImageUrl || canvaUrl
+
+      // Handle Video field (file type)
+      const videoFiles = properties['Video']?.files || []
+      const firstVideo = videoFiles[0]
+      const videoUrl = firstVideo?.file?.url || firstVideo?.external?.url ||
+                       properties['Video URL']?.url || ''
+
+      // Handle Thumbnail field (for custom video thumbnails)
+      const thumbnailFiles = properties['Thumbnail']?.files || []
+      const thumbnailUrl = thumbnailFiles[0]?.file?.url ||
+                          thumbnailFiles[0]?.external?.url || ''
+
+      // Determine media type
+      let mediaType: 'image' | 'video' | 'carousel' = 'image'
+      if (videoUrl) {
+        mediaType = 'video'
+      } else if (allImages.length > 1) {
+        mediaType = 'carousel'
+      }
 
       // Handle caption (rich_text type)
       const caption = properties['Caption']?.rich_text?.[0]?.plain_text || ''
@@ -86,11 +116,15 @@ export async function getSocialPosts(sortBy: 'slot' | 'date' = 'slot'): Promise<
         platform,
         format,
         publishDate,
+        videoUrl: videoUrl || undefined,
+        thumbnailUrl: thumbnailUrl || undefined,
+        mediaType,
+        images: allImages.length > 1 ? allImages : undefined,
       }
     })
 
-    // Filter out posts without images
-    return posts.filter(post => post.imageUrl)
+    // Filter out posts without any media (image or video)
+    return posts.filter(post => post.imageUrl || post.videoUrl)
   } catch (error) {
     console.error('Error fetching from Notion:', error)
     return []

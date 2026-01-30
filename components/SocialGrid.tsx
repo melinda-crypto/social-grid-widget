@@ -133,9 +133,24 @@ function useColorPalette(imageUrl: string) {
   return colors
 }
 
-// Photo Modal with caption
+// Media Modal with video/carousel support
 function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }) {
   const colors = useColorPalette(post.imageUrl)
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const isVideo = post.mediaType === 'video'
+  const isCarousel = post.mediaType === 'carousel' && post.images && post.images.length > 1
+
+  const handlePrev = () => {
+    if (isCarousel && post.images) {
+      setCarouselIndex((prev) => (prev === 0 ? post.images!.length - 1 : prev - 1))
+    }
+  }
+
+  const handleNext = () => {
+    if (isCarousel && post.images) {
+      setCarouselIndex((prev) => (prev === post.images!.length - 1 ? 0 : prev + 1))
+    }
+  }
 
   return (
     <div
@@ -152,14 +167,67 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
       </button>
 
       <div className="max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-        <img
-          src={post.imageUrl}
-          alt={post.name || 'Post'}
-          className="w-full rounded-2xl shadow-2xl"
-        />
+        {/* Video Player */}
+        {isVideo && post.videoUrl ? (
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black">
+            <video
+              src={post.videoUrl}
+              className="w-full max-h-[70vh] object-contain"
+              controls
+              autoPlay
+              loop
+              playsInline
+            />
+          </div>
+        ) : isCarousel && post.images ? (
+          /* Carousel with navigation */
+          <div className="relative">
+            <img
+              src={post.images[carouselIndex]}
+              alt={`${post.name || 'Post'} - ${carouselIndex + 1}`}
+              className="w-full rounded-2xl shadow-2xl"
+            />
+            {/* Navigation arrows */}
+            <button
+              onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            {/* Dots indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {post.images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setCarouselIndex(i); }}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === carouselIndex ? 'bg-white scale-110' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Regular image */
+          <img
+            src={post.imageUrl}
+            alt={post.name || 'Post'}
+            className="w-full rounded-2xl shadow-2xl"
+          />
+        )}
 
         {/* Color Palette */}
-        {colors.length > 0 && (
+        {colors.length > 0 && !isVideo && (
           <div className="flex items-center justify-center gap-2 mt-4">
             <span className="text-xs text-white/40">Colors:</span>
             {colors.map((color, i) => (
@@ -178,6 +246,9 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
             <div className="flex items-center gap-3 mb-3">
               {post.format && (
                 <span className="text-lg" title={post.format}>{formatIcons[post.format]}</span>
+              )}
+              {isVideo && (
+                <span className="text-lg" title="Video">🎬</span>
               )}
               {post.name && <h3 className="text-white text-lg font-medium">{post.name}</h3>}
             </div>
@@ -202,6 +273,11 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
                   📅 {new Date(post.publishDate).toLocaleDateString()}
                 </span>
               )}
+              {isCarousel && post.images && (
+                <span className="px-3 py-1 rounded-full bg-white/10 text-xs text-white/60">
+                  📑 {carouselIndex + 1}/{post.images.length}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -210,7 +286,7 @@ function PhotoModal({ post, onClose }: { post: SocialPost; onClose: () => void }
   )
 }
 
-// Sortable Post Item with sleek overlays
+// Sortable Post Item with sleek overlays and video support
 function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   post: SocialPost
   onSelect: (post: SocialPost) => void
@@ -218,6 +294,7 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   showOverlays: boolean
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const {
     attributes,
     listeners,
@@ -233,6 +310,25 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
   }
 
   const dateInfo = post.publishDate ? getDaysUntil(post.publishDate) : null
+  const isVideo = post.mediaType === 'video'
+  const isCarousel = post.mediaType === 'carousel'
+
+  // Handle video hover play/pause
+  useEffect(() => {
+    if (videoRef.current && isVideo) {
+      if (isHovered) {
+        videoRef.current.play().catch(() => {})
+      } else {
+        videoRef.current.pause()
+        videoRef.current.currentTime = 0
+      }
+    }
+  }, [isHovered, isVideo])
+
+  // Get display image (thumbnail for video, first image otherwise)
+  const displayImage = isVideo
+    ? (post.thumbnailUrl || post.imageUrl)
+    : post.imageUrl
 
   return (
     <div
@@ -249,15 +345,60 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         showOverlays && post.status ? `border-l-[3px] ${statusColors[post.status]}` : ''
       }`}
     >
-      <img
-        src={post.imageUrl}
-        alt={post.name || ''}
-        className="w-full h-full object-cover"
-        draggable={false}
-      />
+      {/* Video with hover-to-play */}
+      {isVideo && post.videoUrl ? (
+        <>
+          {/* Show thumbnail when not hovering */}
+          {!isHovered && displayImage && (
+            <img
+              src={displayImage}
+              alt={post.name || ''}
+              className="w-full h-full object-cover absolute inset-0"
+              draggable={false}
+            />
+          )}
+          {/* Video element - plays on hover */}
+          <video
+            ref={videoRef}
+            src={post.videoUrl}
+            className={`w-full h-full object-cover ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+          />
+        </>
+      ) : (
+        /* Regular image */
+        <img
+          src={displayImage}
+          alt={post.name || ''}
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      )}
 
       {showOverlays && (
         <>
+          {/* Video icon - top right */}
+          {isVideo && (
+            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          )}
+
+          {/* Carousel indicator - top right (if not video) */}
+          {isCarousel && !isVideo && (
+            <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-1">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span className="text-[8px] text-white font-medium">{post.images?.length}</span>
+            </div>
+          )}
+
           {/* Format pill - top left with glass effect */}
           {post.format && (
             <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90 flex items-center gap-0.5">
@@ -278,8 +419,8 @@ function SortablePostItem({ post, onSelect, isDragDisabled, showOverlays }: {
         </>
       )}
 
-      {/* Caption preview on hover */}
-      {isHovered && post.caption && (
+      {/* Caption preview on hover (only for images, not when video is playing) */}
+      {isHovered && post.caption && !isVideo && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-10">
           <p className="text-white text-[9px] leading-tight line-clamp-2 font-medium">
             {post.caption}
@@ -342,7 +483,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
       if (sortMode === 'slot') {
         setIsSaving(true)
-        await Promise.all(newPosts.map((p, i) => saveSlotToNotion(p.id, i + 1)))
+        await Promise.all(newPosts.map((p: SocialPost, i: number) => saveSlotToNotion(p.id, i + 1)))
         setIsSaving(false)
       }
     }
