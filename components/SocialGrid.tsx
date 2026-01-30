@@ -691,25 +691,25 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
         </div>
       </div>
 
-      {/* Collapsible Settings Panel */}
+      {/* Minimal Settings Dropdown */}
       {settingsOpen && (
-        <div className="mb-4 p-3 bg-gray-50/80 backdrop-blur-sm rounded-2xl space-y-2.5 border border-gray-100">
+        <div className="mb-4 p-3 bg-gray-50/80 backdrop-blur-sm rounded-xl space-y-3 border border-gray-100 shadow-sm">
           {/* Sort */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Sort</span>
-            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+            <span className="text-[11px] text-gray-500">Sort by</span>
+            <div className="flex gap-1">
               <button
                 onClick={() => setSortMode('slot')}
-                className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
-                  sortMode === 'slot' ? 'bg-gray-900 text-white' : 'text-gray-400'
+                className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
+                  sortMode === 'slot' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 Manual
               </button>
               <button
                 onClick={() => setSortMode('date')}
-                className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
-                  sortMode === 'date' ? 'bg-gray-900 text-white' : 'text-gray-400'
+                className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
+                  sortMode === 'date' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 Date
@@ -719,14 +719,14 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
 
           {/* Platform */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Platform</span>
-            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
+            <span className="text-[11px] text-gray-500">Platform</span>
+            <div className="flex gap-1">
               {(['all', 'Instagram', 'TikTok'] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPlatformFilter(p)}
-                  className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
-                    platformFilter === p ? 'bg-gray-900 text-white' : 'text-gray-400'
+                  className={`px-3 py-1.5 text-[11px] rounded-lg transition-all ${
+                    platformFilter === p ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'
                   }`}
                 >
                   {p === 'all' ? 'All' : p === 'Instagram' ? 'IG' : 'TT'}
@@ -735,62 +735,18 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
             </div>
           </div>
 
-          {/* Format */}
+          {/* Badges Toggle */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Format</span>
-            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
-              {(['all', 'Feed Post', 'Reel', 'Story', 'Carousel'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFormatFilter(f)}
-                  className={`px-2 py-1 text-[10px] rounded-full transition-all ${
-                    formatFilter === f ? 'bg-gray-900 text-white' : 'text-gray-400'
-                  }`}
-                >
-                  {f === 'all' ? 'All' : formatIcons[f]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Rows */}
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Rows</span>
-            <div className="flex gap-0.5 bg-white rounded-full p-0.5 shadow-sm">
-              {(['3x3', '3x4', '3x5'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setGridSize(size)}
-                  className={`px-2.5 py-1 text-[10px] rounded-full transition-all ${
-                    gridSize === size ? 'bg-gray-900 text-white' : 'text-gray-400'
-                  }`}
-                >
-                  {size.split('x')[1]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Badges & Reset */}
-          <div className="flex items-center justify-between pt-1.5 border-t border-gray-200/50">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400">Badges</span>
-              <button
-                onClick={() => setShowOverlays(!showOverlays)}
-                className={`w-8 h-4 rounded-full transition-colors ${
-                  showOverlays ? 'bg-gray-900' : 'bg-gray-300'
-                }`}
-              >
-                <div className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${
-                  showOverlays ? 'translate-x-4' : 'translate-x-0.5'
-                }`} />
-              </button>
-            </div>
+            <span className="text-[11px] text-gray-500">Show badges</span>
             <button
-              onClick={handleReset}
-              className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={() => setShowOverlays(!showOverlays)}
+              className={`w-10 h-5 rounded-full transition-colors relative ${
+                showOverlays ? 'bg-gray-900' : 'bg-gray-300'
+              }`}
             >
-              Reset
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                showOverlays ? 'left-5' : 'left-0.5'
+              }`} />
             </button>
           </div>
         </div>
