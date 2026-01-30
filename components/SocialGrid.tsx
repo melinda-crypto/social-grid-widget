@@ -23,23 +23,30 @@ import { CSS } from '@dnd-kit/utilities'
 import PhoneMockup from './PhoneMockup'
 import TutorialOverlay from './TutorialOverlay'
 
-// Local storage key for tutorial
+// Local storage keys
 const TUTORIAL_SHOWN_KEY = 'social-grid-tutorial-shown'
+const DARK_MODE_KEY = 'social-grid-dark-mode'
+const GRID_SIZE_KEY = 'social-grid-size'
 
 type ViewMode = 'grid' | 'phone'
+type ThemeMode = 'light' | 'dark'
 
 interface SocialGridProps {
   posts: SocialPost[]
+  readOnly?: boolean
 }
 
-type GridSize = '3x3' | '3x4' | '3x5'
+type GridSize = '3x3' | '3x4' | '3x5' | '4x4' | '5x5' | '6x6'
 type SortMode = 'slot' | 'date'
 type StatusFilter = 'all' | 'Idea' | 'Draft' | 'Ready' | 'Scheduled' | 'Live'
 
-const gridConfigs = {
+const gridConfigs: Record<GridSize, { cols: number; maxPosts: number }> = {
   '3x3': { cols: 3, maxPosts: 9 },
   '3x4': { cols: 3, maxPosts: 12 },
   '3x5': { cols: 3, maxPosts: 15 },
+  '4x4': { cols: 4, maxPosts: 16 },
+  '5x5': { cols: 5, maxPosts: 25 },
+  '6x6': { cols: 6, maxPosts: 36 },
 }
 
 const DEFAULTS = {
@@ -120,6 +127,25 @@ const statusBgColors: Record<string, string> = {
   'Ready': 'bg-amber-500',
   'Scheduled': 'bg-blue-500',
   'Live': 'bg-emerald-500',
+}
+
+// Calculate grid aesthetic score based on color diversity
+function calculateAestheticScore(posts: SocialPost[]): { score: number; label: string; emoji: string } {
+  if (posts.length < 3) return { score: 0, label: 'Add more posts', emoji: '➕' }
+
+  // Simple heuristic: check variety of status (as proxy for content diversity)
+  const statuses = new Set(posts.map(p => p.status).filter(Boolean))
+  const formats = new Set(posts.map(p => p.format).filter(Boolean))
+
+  // Score based on variety
+  const statusVariety = statuses.size / 5 // max 5 statuses
+  const formatVariety = formats.size / 4 // max 4 formats
+  const score = Math.round((statusVariety * 0.4 + formatVariety * 0.6) * 100)
+
+  if (score >= 70) return { score, label: 'Great variety', emoji: '✨' }
+  if (score >= 50) return { score, label: 'Good balance', emoji: '✓' }
+  if (score >= 30) return { score, label: 'Add variety', emoji: '💡' }
+  return { score, label: 'Mix it up', emoji: '🎨' }
 }
 
 // Calculate days until publish
@@ -707,8 +733,9 @@ function LowContentPlaceholder() {
   )
 }
 
-export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
+export default function SocialGrid({ posts: initialPosts, readOnly = false }: SocialGridProps) {
   const [posts, setPosts] = useState(initialPosts)
+  const [showShareToast, setShowShareToast] = useState(false)
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [gridSize, setGridSize] = useState<GridSize>(DEFAULTS.gridSize)
@@ -719,8 +746,22 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   const [showTutorial, setShowTutorial] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [darkMode, setDarkMode] = useState<ThemeMode>('light')
+  const [showGridPicker, setShowGridPicker] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Load preferences from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedDarkMode = localStorage.getItem(DARK_MODE_KEY)
+      const savedGridSize = localStorage.getItem(GRID_SIZE_KEY)
+      if (savedDarkMode === 'dark') setDarkMode('dark')
+      if (savedGridSize && gridConfigs[savedGridSize as GridSize]) {
+        setGridSize(savedGridSize as GridSize)
+      }
+    }
+  }, [])
 
   // Check if tutorial should be shown (first time user)
   useEffect(() => {
@@ -731,6 +772,42 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       }
     }
   }, [initialPosts.length])
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newMode = darkMode === 'light' ? 'dark' : 'light'
+    setDarkMode(newMode)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(DARK_MODE_KEY, newMode)
+    }
+  }
+
+  // Change grid size
+  const changeGridSize = (size: GridSize) => {
+    setGridSize(size)
+    setShowGridPicker(false)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(GRID_SIZE_KEY, size)
+    }
+  }
+
+  // Generate and copy share link
+  const handleShare = async () => {
+    if (typeof window !== 'undefined') {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?view=preview`
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setShowShareToast(true)
+        setTimeout(() => setShowShareToast(false), 2000)
+      } catch {
+        // Fallback: show URL in prompt
+        window.prompt('Copy this link to share:', shareUrl)
+      }
+    }
+  }
+
+  // Check if in preview/readonly mode
+  const isPreviewMode = readOnly || (typeof window !== 'undefined' && window.location.search.includes('view=preview'))
 
   const dismissTutorial = () => {
     setShowTutorial(false)
@@ -748,7 +825,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       // Dynamic import html2canvas
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(gridRef.current, {
-        backgroundColor: '#ffffff',
+        backgroundColor: darkMode === 'dark' ? '#1f2937' : '#ffffff',
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -842,26 +919,26 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
   if (isDemo) {
     return (
       <div className="w-full max-w-md mx-auto">
-        {/* Demo badge */}
-        <div className="mb-3 text-center">
-          <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
-            ✨ Demo Mode — Connect your Notion database to get started
-          </span>
+        {/* Value prop headline */}
+        <div className="mb-4 text-center">
+          <h2 className="text-lg font-semibold text-gray-800 mb-1">See your feed before you post</h2>
+          <p className="text-sm text-gray-500">Drag to rearrange. Click to preview. Confidence before posting.</p>
         </div>
 
-        {/* Demo Grid */}
-        <div className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100 opacity-75">
+        {/* Demo Grid - full opacity, looks real */}
+        <div className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
           <div className="grid grid-cols-3 gap-[1px] bg-gray-100">
             {demoPosts.map((post) => (
-              <div key={post.id} className="relative aspect-square bg-gray-100">
+              <div key={post.id} className="relative aspect-square bg-gray-100 group cursor-pointer">
                 <img
                   src={post.imageUrl}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform group-hover:scale-[1.02]"
                 />
-                {post.format && (
-                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[9px] text-white/90">
-                    {formatIcons[post.format]}
+                {/* Status badge */}
+                {post.status && statusStyles[post.status] && (
+                  <div className={`absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8px] font-medium backdrop-blur-sm ${statusStyles[post.status].bg} ${statusStyles[post.status].text}`}>
+                    {statusStyles[post.status].label}
                   </div>
                 )}
               </div>
@@ -869,32 +946,47 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-4 text-center space-y-2">
-          <p className="text-sm text-gray-500">See your content together, before you post.</p>
+        {/* CTA - emotional hook */}
+        <div className="mt-5 text-center space-y-3">
+          <div className="flex items-center justify-center gap-4 text-[11px] text-gray-400">
+            <span>✓ Drag to reorder</span>
+            <span>✓ Live Notion sync</span>
+            <span>✓ Canva previews</span>
+          </div>
+          <p className="text-xs text-gray-500">Connect your Notion database to replace this demo with your posts</p>
           <button
             onClick={handleReset}
-            className="px-4 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
+            className="px-5 py-2.5 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors font-medium"
           >
-            Refresh to load posts
+            Load My Posts
           </button>
         </div>
       </div>
     )
   }
 
+  // Theme classes
+  const isDark = darkMode === 'dark'
+  const themeClasses = isDark
+    ? 'bg-gray-900 text-white'
+    : 'bg-white text-gray-900'
+  const subtleText = isDark ? 'text-gray-400' : 'text-gray-500'
+  const mutedText = isDark ? 'text-gray-500' : 'text-gray-400'
+
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className={`w-full ${gridSize.startsWith('3') ? 'max-w-md' : gridSize === '4x4' ? 'max-w-lg' : gridSize === '5x5' ? 'max-w-xl' : 'max-w-2xl'} mx-auto transition-colors ${isDark ? 'bg-gray-950' : ''}`}>
       {/* Subtle Top Bar - visually secondary to the grid */}
-      <div className="mb-2 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity">
+      <div className={`mb-2 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity`}>
         {/* Left: View + Sort + Filter - all compact */}
         <div className="flex items-center gap-2">
           {/* View Toggle - minimal */}
-          <div className="flex gap-0.5 bg-gray-100/80 rounded-full p-0.5">
+          <div className={`flex gap-0.5 ${isDark ? 'bg-gray-800' : 'bg-gray-100/80'} rounded-full p-0.5`}>
             <button
               onClick={() => setViewMode('grid')}
               className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
-                viewMode === 'grid' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-400'
+                viewMode === 'grid'
+                  ? isDark ? 'bg-gray-700 text-white shadow-sm' : 'bg-white text-gray-700 shadow-sm'
+                  : mutedText
               }`}
             >
               Grid
@@ -902,17 +994,46 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
             <button
               onClick={() => setViewMode('phone')}
               className={`px-1.5 py-0.5 text-[10px] rounded-full transition-all ${
-                viewMode === 'phone' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-400'
+                viewMode === 'phone'
+                  ? isDark ? 'bg-gray-700 text-white shadow-sm' : 'bg-white text-gray-700 shadow-sm'
+                  : mutedText
               }`}
             >
               📱
             </button>
           </div>
 
+          {/* Grid Size Picker */}
+          <div className="relative">
+            <button
+              onClick={() => setShowGridPicker(!showGridPicker)}
+              className={`text-[10px] ${mutedText} hover:${subtleText} transition-colors`}
+            >
+              {gridSize} ▾
+            </button>
+            {showGridPicker && (
+              <div className={`absolute top-full left-0 mt-1 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} py-1 z-20 min-w-[80px]`}>
+                {(['3x3', '3x4', '3x5', '4x4', '5x5', '6x6'] as GridSize[]).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => changeGridSize(size)}
+                    className={`block w-full px-3 py-1 text-[10px] text-left transition-colors ${
+                      gridSize === size
+                        ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'
+                        : isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {size} ({gridConfigs[size].maxPosts})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Sort Toggle - lighter */}
           <button
             onClick={() => setSortMode(sortMode === 'slot' ? 'date' : 'slot')}
-            className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+            className={`text-[10px] ${mutedText} hover:${subtleText} transition-colors`}
           >
             {sortMode === 'slot' ? 'Manual' : 'Date'} ▾
           </button>
@@ -921,7 +1042,7 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="text-gray-400 bg-transparent border-none text-[10px] cursor-pointer hover:text-gray-600 focus:outline-none"
+            className={`${mutedText} bg-transparent border-none text-[10px] cursor-pointer hover:${subtleText} focus:outline-none`}
           >
             <option value="all">All</option>
             <option value="Idea">Idea</option>
@@ -932,13 +1053,24 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           </select>
         </div>
 
-        {/* Right: Badge toggle - simple 🏷 icon */}
+        {/* Right: Theme toggle + Badge toggle */}
         <div className="flex items-center gap-1.5">
           {isSaving && <span className="text-[9px] text-blue-500">Saving...</span>}
+          {/* Dark mode toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className={`px-1.5 py-0.5 rounded text-[10px] transition-all ${mutedText} hover:${subtleText}`}
+            title={isDark ? 'Light mode' : 'Dark mode'}
+          >
+            {isDark ? '☀️' : '🌙'}
+          </button>
+          {/* Badge toggle */}
           <button
             onClick={() => setShowDetailedOverlays(!showDetailedOverlays)}
             className={`px-1.5 py-0.5 rounded text-[10px] transition-all ${
-              showDetailedOverlays ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:text-gray-600'
+              showDetailedOverlays
+                ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
+                : `${mutedText} hover:${subtleText}`
             }`}
             title={showDetailedOverlays ? 'Hide details' : 'Show details'}
           >
@@ -953,15 +1085,15 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           {/* Low-content guidance (0-2 posts) */}
           {displayPosts.length < 3 && (
             <div className="text-center mb-3">
-              <p className="text-sm text-gray-500">Your upcoming posts will appear here</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Add posts in Notion — they'll show up automatically</p>
+              <p className={`text-sm ${subtleText}`}>Your upcoming posts will appear here</p>
+              <p className={`text-[11px] ${mutedText} mt-0.5`}>Add posts in Notion — they'll show up automatically</p>
             </div>
           )}
 
-          <div ref={gridRef} className="rounded-2xl overflow-hidden bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100">
+          <div ref={gridRef} className={`rounded-2xl overflow-hidden ${isDark ? 'bg-gray-800 shadow-[0_2px_20px_-4px_rgba(0,0,0,0.5)] ring-1 ring-gray-700' : 'bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-gray-100'}`}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-3 gap-[1px] bg-gray-100">
+                <div className={`grid gap-[1px] ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`} style={{ gridTemplateColumns: `repeat(${gridConfigs[gridSize].cols}, 1fr)` }}>
                   {displayPosts.map((post) => (
                     <SortablePostItem
                       key={post.id}
@@ -992,16 +1124,41 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
           </div>
 
           {/* Action Footer - with subtle divider */}
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-[10px] text-gray-600 font-medium">
-              {sortMode === 'slot' ? '⤢ Drag posts to rearrange your feed' : '📅 Sorted by publish date'}
-            </p>
+          <div className={`mt-4 pt-3 border-t ${isDark ? 'border-gray-800' : 'border-gray-100'} flex items-center justify-between`}>
+            <div className="flex items-center gap-3">
+              <p className={`text-[10px] font-medium ${subtleText}`}>
+                {sortMode === 'slot' ? '⤢ Drag posts to rearrange your feed' : '📅 Sorted by publish date'}
+              </p>
+              {/* Aesthetic score */}
+              {displayPosts.length >= 3 && (
+                <span className={`text-[9px] ${mutedText} hidden sm:inline`}>
+                  {calculateAestheticScore(displayPosts).emoji} {calculateAestheticScore(displayPosts).label}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
+              {/* Share Button */}
+              {!isPreviewMode && (
+                <button
+                  onClick={handleShare}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 text-[10px] rounded-lg transition-colors ${
+                    isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Share preview with clients"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share
+                </button>
+              )}
               {/* Save Image Button */}
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-[10px] rounded-lg transition-colors disabled:opacity-50 ${
+                  isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
                 title="Save grid as image"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1010,16 +1167,20 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
                 {isExporting ? 'Saving...' : 'Save Image'}
               </button>
               {/* Refresh Button */}
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg hover:bg-gray-800 transition-colors"
-                title="Refresh from Notion"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
+              {!isPreviewMode && (
+                <button
+                  onClick={handleReset}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] rounded-lg transition-colors ${
+                    isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-gray-900 text-white hover:bg-gray-800'
+                  }`}
+                  title="Refresh from Notion"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+              )}
             </div>
           </div>
         </>
@@ -1064,6 +1225,23 @@ export default function SocialGrid({ posts: initialPosts }: SocialGridProps) {
       {/* Tutorial Overlay (first-time users) */}
       {showTutorial && (
         <TutorialOverlay onDismiss={dismissTutorial} />
+      )}
+
+      {/* Share Toast Notification */}
+      {showShareToast && (
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
+          style={{ animation: 'fadeInUp 0.3s ease-out' }}
+        >
+          <div className={`px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 ${
+            isDark ? 'bg-gray-800 text-white' : 'bg-gray-900 text-white'
+          }`}>
+            <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-sm font-medium">Share link copied!</span>
+          </div>
+        </div>
       )}
     </div>
   )
