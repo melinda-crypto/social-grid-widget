@@ -748,8 +748,18 @@ export default function SocialGrid({ posts: initialPosts, readOnly = false }: So
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [darkMode, setDarkMode] = useState<ThemeMode>('light')
   const [showGridPicker, setShowGridPicker] = useState(false)
+  const [isMobileEmbed, setIsMobileEmbed] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Detect if we're on mobile inside an iframe (Notion embed)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isInIframe = window.self !== window.top
+      setIsMobileEmbed(isMobile && isInIframe)
+    }
+  }, [])
 
   // Load preferences from localStorage
   useEffect(() => {
@@ -972,6 +982,26 @@ export default function SocialGrid({ posts: initialPosts, readOnly = false }: So
     : 'bg-white text-gray-900'
   const subtleText = isDark ? 'text-gray-400' : 'text-gray-500'
   const mutedText = isDark ? 'text-gray-500' : 'text-gray-400'
+
+  // Mobile embed fallback - show a nice button to open in browser
+  if (isMobileEmbed) {
+    return (
+      <div className="min-h-[200px] flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="text-4xl mb-3">📱</div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-1">Instagram Grid Planner</h3>
+        <p className="text-sm text-gray-500 mb-4 text-center">Tap below to open the full planner</p>
+        <a
+          href={typeof window !== 'undefined' ? window.location.href : '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all text-sm"
+        >
+          Open Grid Planner →
+        </a>
+        <p className="text-xs text-gray-400 mt-3">Opens in your browser for full features</p>
+      </div>
+    )
+  }
 
   return (
     <div className={`w-full ${gridSize.startsWith('3') ? 'max-w-md' : gridSize === '4x4' ? 'max-w-lg' : gridSize === '5x5' ? 'max-w-xl' : 'max-w-2xl'} mx-auto transition-colors ${isDark ? 'bg-gray-950' : ''}`}>
