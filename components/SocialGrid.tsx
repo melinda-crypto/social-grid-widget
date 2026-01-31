@@ -755,9 +755,21 @@ export default function SocialGrid({ posts: initialPosts, readOnly = false }: So
   // Detect if we're on mobile inside an iframe (Notion embed)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-      const isInIframe = window.self !== window.top
-      setIsMobileEmbed(isMobile && isInIframe)
+      try {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        // This can throw in cross-origin iframes, so wrap in try-catch
+        let isInIframe = false
+        try {
+          isInIframe = window.self !== window.top
+        } catch {
+          // If we can't access window.top, we're definitely in a cross-origin iframe
+          isInIframe = true
+        }
+        setIsMobileEmbed(isMobile && isInIframe)
+      } catch {
+        // Fallback: don't show mobile embed UI if detection fails
+        setIsMobileEmbed(false)
+      }
     }
   }, [])
 
